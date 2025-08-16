@@ -70,11 +70,15 @@ do_section_install(){
 
 # Desinstala uma ferramenta com base no catálogo
 uninstall_tool(){
-  local name="$1"
-  local formula cask
+  local name="${1:-}"
+  if [[ -z "$name" ]]; then
+    err "uninstall_tool: nome da ferramenta vazio"
+    return 1
+  fi
 
-  formula="$(tool_field "$name" '.brew.formula // ""')"
-  cask="$(tool_field "$name" '.brew.cask // ""')"
+  local formula cask
+  formula="$(tool_field "$name" '.brew.formula // ""' | tr -d '\r')"
+  cask="$(tool_field "$name" '.brew.cask // ""' | tr -d '\r')"
 
   prime_brew_shellenv
   if ! command -v brew >/dev/null 2>&1; then
@@ -82,7 +86,7 @@ uninstall_tool(){
     return 1
   fi
 
-  info "Desinstalando $name…"
+  info "Desinstalando $name"
   brew_uninstall_if_installed "$formula"
   brew_cask_uninstall_if_installed "$cask"
 
@@ -103,4 +107,81 @@ do_section_uninstall(){
   for t in "${tools[@]}"; do
     uninstall_tool "$t"
   done
+}
+
+# Reinstala uma ferramenta (usado no restore)
+reinstall_tool(){
+  local name="$1"
+  # mesmo fluxo de install_tool (respeita brew/cask/install/env/aliases)
+  install_tool "$name"
+}
+
+restore_section(){
+  local sec="$1"
+  info "Restaurando seção: $sec"
+  local tools; mapfile -t tools < <(list_tools_by_section "$sec")
+  if (( ${#tools[@]} == 0 )); then
+    warn "Seção '$sec' vazia."
+    return 0
+  fi
+  for t in "${tools[@]}"; do
+    reinstall_tool "$t"
+  done
+}
+
+# --- Update helpers ---
+
+# Atualiza uma ferramenta (formula/cask) se instalada via brew.
+upgrade_tool(){
+  local name="${1:-}"
+  [[ -z "$name" ]] && { err "upgrade_tool: nome vazio"; return 1; }
+
+  local formula cask
+  formula="$(tool_field "$name" '.brew.formula // ""' | tr -d '\r')"
+  cask="$(tool_field "$name" '.brew.cask // ""' | tr -d '\r')"
+
+  prime_brew_shellenv
+  if ! command -v brew >/dev/null 2>&1; then
+    err "Homebrew não encontrado; não é possível atualizar '$name'."
+    return 1
+  fi
+
+  local changed=0
+  if [[ -n "$formula" && "$formula" != "null" ]]; then
+    if brew list --formula | grep -qx "$formula"; then
+      info "brew upgrade $formula"
+      brew upgrade "$formula" || true
+      changed=1
+    else
+      info "brew: formula $formula não instalada; pulando."
+    fi
+  fi
+
+  if [[ -n "$cask" && "$cask" != "null" ]]; then
+    if brew list --cask | grep -qx "$cask"; then
+      info "brew upgrade --cask $cask"
+      brew upgrade --cask "$cask" || true
+      changed=1
+    else
+      info "brew: cask $cask não instalada; pulando."
+    fi
+  fi
+
+  if (( changed==1 )); then
+    ok "$name atualizado"
+  else
+    info "$name já estava atualizado (ou não instalado via brew)."
+  fi
+}
+
+# Lista pacotes desatualizados no Homebrew (fórmulas e casks).
+brew_list_outdated(){
+  prime_brew_shellenv
+  command -v brew >/dev/null 2>&1 || { echo ""; return 0; }
+
+  echo "Formulas desatualizadas:"
+  brew outdated || true
+  echo
+  echo "Casks desatualizados:"
+  brew outdated --cask || true
 }

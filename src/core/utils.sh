@@ -39,3 +39,18 @@ append_once(){
     printf "\n%s\n%s\n" "$marker" "$block" >> "$file"
   fi
 }
+
+# Converte bytes em tamanho "humano" (B, KB, MB, GB, TB) sem depender de numfmt
+human_size(){
+  local bytes="${1:-0}"
+  local unit=("B" "KB" "MB" "GB" "TB")
+  local i=0
+  local rem=0
+  while (( bytes >= 1024 && i < ${#unit[@]}-1 )); do
+    rem=$(( bytes % 1024 ))
+    bytes=$(( bytes / 1024 ))
+    ((i++))
+  done
+  # arredonda simples para evitar casas decimais (pode refinar depois)
+  echo "${bytes}${unit[$i]}"
+}

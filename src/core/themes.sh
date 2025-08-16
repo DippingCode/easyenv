@@ -69,7 +69,8 @@ themes_apply() {
   echo "⚡ Aplicando tema: $theme"
 
   # Atualiza linha do ZSH_THEME no .zshrc
-  sed -i.bak "s/^ZSH_THEME=.*/ZSH_THEME=\"$theme\"/" "$ZSHRC_FILE"
+  # sem backup, pois o easyenv backup já cobre
+  sed -i '' "s/^ZSH_THEME=.*/ZSH_THEME=\"$theme\"/" "$ZSHRC_FILE"
   source "$ZSHRC_FILE"
 
   echo "✅ Tema $theme aplicado com sucesso!"

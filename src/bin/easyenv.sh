@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # EasyEnv - CLI
-# Passo 1/2: roteador, help, status e logging básico
+# Núcleo: roteador, help, status, init -steps e logging
 
 set -euo pipefail
 
@@ -11,9 +11,9 @@ CFG_DIR="$EASYENV_HOME/src/config"
 LOG_DIR="$EASYENV_HOME/src/logs"
 
 # Fonte dos módulos core
-# (mantemos sourcing explícito para clareza nesta fase)
 source "$CORE_DIR/utils.sh"
 source "$CORE_DIR/workspace.sh"
+source "$CORE_DIR/tools.sh"    # << novo: instaladores/operadores de ferramentas
 
 # --------------- Subcomandos ---------------
 
@@ -27,17 +27,17 @@ Usage:
 Commands:
   help           Show this help
   status         Show current workspace status
-  init           (coming next step) Install sections/tools from YAML
-  clean          (coming next step) Remove tools/caches
-  restore        (coming next step) Restore workspace (all/section/tool/backup)
-  update         (coming next step) Update tools
-  backup         (coming next step) Create a backup archive
-  add            (coming next step) Add a tool by name
-  theme          (coming next step) Manage oh-my-zsh themes
+  init           Install sections/tools from YAML (supports -steps)
+  clean          (coming) Remove tools/caches
+  restore        (coming) Restore workspace (all/section/tool/backup)
+  update         (coming) Update tools
+  backup         (coming) Create a backup archive
+  add            (coming) Add a tool by name
+  theme          (coming) Manage oh-my-zsh themes
 
 Examples:
   easyenv status
-  easyenv help
+  easyenv init -steps
 EOF
 }
 
@@ -70,6 +70,64 @@ cmd_status(){
   fi
 }
 
+cmd_init(){
+  require_cmd "yq" "Instale com: brew install yq."
+  ensure_workspace_dirs
+  prime_brew_shellenv
+
+  local steps=0
+  # se no snapshot preferências dizem para usar steps por default, ativa
+  if [[ -f "$SNAP_FILE" ]]; then
+    local def_steps
+    def_steps="$(yq -r '.preferences.init.steps_mode_default // false' "$SNAP_FILE" || echo false)"
+    [[ "$def_steps" == "true" ]] && steps=1
+  fi
+  # parametro CLI tem prioridade
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -steps) steps=1 ;;
+      *) warn "Opção desconhecida: $1" ;;
+    esac
+    shift
+  done
+
+  local skip=""
+  [[ -f "$SNAP_FILE" ]] && skip="$(yq -r '.preferences.init.skip_sections[]? // empty' "$SNAP_FILE" | tr '\n' ' ')"
+
+  brew_update_quick || true
+
+  echo
+  _bld "Instalação por seções"
+  if (( steps==1 )); then
+    echo "Modo interativo (-steps) habilitado."
+  fi
+  echo
+
+  local sections; mapfile -t sections < <(list_sections)
+  if (( ${#sections[@]} == 0 )); then
+    err "Nenhuma seção encontrada em $CFG_FILE (.tools[].section)."
+    exit 1
+  fi
+
+  for sec in "${sections[@]}"; do
+    if [[ " $skip " == *" $sec "* ]]; then
+      info "Pulando seção '$sec' (skip_sections do snapshot)."
+      continue
+    fi
+
+    if (( steps==1 )); then
+      if ! confirm "Deseja instalar a seção '$sec'? (yes/NO) "; then
+        info "Seção '$sec' ignorada."
+        continue
+      fi
+    fi
+
+    do_section_install "$sec"
+  done
+
+  ok "Init concluído. Você pode rodar: source ~/.zshrc"
+}
+
 # --------------- Dispatcher ---------------
 
 main(){
@@ -77,9 +135,10 @@ main(){
   local cmd="${1:-help}"; shift || true
 
   case "$cmd" in
-    help|-h|--help) log_line "help" "start" "-"; cmd_help; log_line "help" "success" "ok" ;;
-    status)         log_line "status" "start" "-"; cmd_status; log_line "status" "success" "ok" ;;
-    init|clean|restore|update|backup|add|theme)
+    help|-h|--help)      log_line "help" "start" "-";  cmd_help;   log_line "help" "success" "ok" ;;
+    status)              log_line "status" "start" "-"; cmd_status; log_line "status" "success" "ok" ;;
+    init)                log_line "init" "start" "-";   cmd_init "$@"; log_line "init" "success" "ok" ;;
+    clean|restore|update|backup|add|theme)
       err "O subcomando '$cmd' será implementado no próximo passo do backlog."
       log_line "$cmd" "todo" "not-implemented"
       exit 2

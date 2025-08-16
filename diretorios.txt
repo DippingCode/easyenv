@@ -1,0 +1,21 @@
+easyenv/
+│
+├── src/
+│   ├──bin/                         # scripts executáveis principais
+│   │   └── easyenv.sh               # CLI principal (será chamado como "easyenv")
+│   ├── config/                      # arquivos de configuração
+│   │   ├── tools.yml                # lista de ferramentas, stacks e configs
+│   │   └── default.zshrc            # zshrc base para instalar/mergear
+│   ├── logs/                        # histórico de execuções
+│   │   └── easyenv.log
+│   ├── tests/                       # scripts de homologação/testes
+│   │   ├── test_clean.sh
+│   │   ├── test_init.sh
+│   │   └── ...
+│   └── install.sh                   # script único para bootstrap inicial
+├── docs/                        # documentação do projeto
+│   ├── README.md                # guia principal
+│   ├── INSTALL.md               # instruções de instalação
+│   └── CONTRIBUTING.md          # como contribuir
+├── .gitignore
+└── LICENSE

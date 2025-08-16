@@ -76,13 +76,12 @@ cmd_init(){
   prime_brew_shellenv
 
   local steps=0
-  # se no snapshot preferências dizem para usar steps por default, ativa
   if [[ -f "$SNAP_FILE" ]]; then
     local def_steps
     def_steps="$(yq -r '.preferences.init.steps_mode_default // false' "$SNAP_FILE" || echo false)"
     [[ "$def_steps" == "true" ]] && steps=1
   fi
-  # parametro CLI tem prioridade
+
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -steps) steps=1 ;;
@@ -91,16 +90,17 @@ cmd_init(){
     shift
   done
 
+  # Lê skip_sections de forma segura (array opcional)
   local skip=""
-  [[ -f "$SNAP_FILE" ]] && skip="$(yq -r '.preferences.init.skip_sections[]? // empty' "$SNAP_FILE" | tr '\n' ' ')"
+  if [[ -f "$SNAP_FILE" ]]; then
+    skip="$(yq -r '(.preferences.init.skip_sections // [])[]' "$SNAP_FILE" 2>/dev/null | tr '\n' ' ')"
+  fi
 
   brew_update_quick || true
 
   echo
   _bld "Instalação por seções"
-  if (( steps==1 )); then
-    echo "Modo interativo (-steps) habilitado."
-  fi
+  (( steps==1 )) && echo "Modo interativo (-steps) habilitado."
   echo
 
   local sections; mapfile -t sections < <(list_sections)

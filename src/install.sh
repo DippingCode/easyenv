@@ -69,6 +69,30 @@ fetch_repo(){
   fi
 }
 
+seed_snapshot_if_missing(){
+  local snap="$HOME/easyenv/src/config/.zshrc-tools.yml"
+  if [[ ! -f "$snap" ]]; then
+    info "Criando snapshot padrão (.zshrc-tools.yml)..."
+    mkdir -p "$(dirname "$snap")"
+    cat > "$snap" <<'YAML'
+workspace:
+  theme:
+    selected: powerlevel10k
+    interactive_config: true
+  stacks_enabled:
+    - CLI Tools
+
+preferences:
+  init:
+    steps_mode_default: true
+    run_interactive_configs: true
+    skip_sections: []
+
+pins: {}
+YAML
+  fi
+}
+
 link_bin_global(){
   chmod +x "$BIN_SRC"
 
@@ -126,6 +150,7 @@ main(){
   prime_brew_shellenv
   fetch_repo
   install_yq
+  seed_snapshot_if_missing
   link_bin_global
   post_install
 }

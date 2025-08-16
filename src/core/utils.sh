@@ -14,6 +14,7 @@ ts(){ date +"%Y-%m-%d %H:%M:%S"; }
 ok(){ _grn "✅ $*"; }
 warn(){ _yel "⚠️  $*"; }
 err(){ _red "❌ $*" >&2; }
+info(){ printf "➜ %s\n" "$*"; }
 
 confirm(){
   local msg="${1:-Confirmar?} (yes/NO) "

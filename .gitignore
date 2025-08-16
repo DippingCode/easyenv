@@ -2,18 +2,17 @@
 # EasyEnv .gitignore
 # =========================
 
-# Logs
+# ---- Logs e temporários ----
 src/logs/*
 !src/logs/.gitkeep     # mantém a pasta vazia versionada
-
-# Backups
 *.bak
 *.backup
 *.old
 *.tmp
 *.swp
+*.log
 
-# Ambiente do usuário
+# ---- Arquivos de ambiente do usuário ----
 .zshrc
 .zshrc-*
 .zsh_history
@@ -23,49 +22,48 @@ src/logs/*
 .bash_profile
 .bashrc
 
-# Configurações locais (não versionar)
+# ---- Configurações locais não versionadas ----
 src/config/local.yml
 src/config/*.local.yml
 
-# Diretórios temporários
+# ---- Diretórios temporários ----
 /tmp
 temp/
 .cache/
-*.log
 
-# Arquivos gerados por testes
+# ---- Saída de testes ----
 src/tests/*.out
 src/tests/*.log
 
-# Arquivos do macOS
+# ---- macOS ----
 .DS_Store
 .AppleDouble
 .LSOverride
 __MACOSX/
 
-# IDEs/editores
+# ---- IDEs e editores ----
 .vscode/
 .idea/
 *.iml
 
-# Arquivos de compilação/binários (se surgirem no futuro)
+# ---- Binários/compilação (caso apareçam no futuro) ----
 *.o
 *.so
 *.dll
 *.exe
 *.out
 
-# Python virtualenv (se usado em testes auxiliares)
+# ---- Python ----
 venv/
 .env
 *.pyc
 __pycache__/
 
-# Node.js (se usado em integração futura)
+# ---- Node.js ----
 node_modules/
 npm-debug.log*
 
-# Brew cache (não precisa versionar)
+# ---- Brew cache (não precisa versionar) ----
 Library/
 Cellar/
 Caskroom/

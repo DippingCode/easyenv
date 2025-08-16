@@ -1,0 +1,13 @@
+# Catálogo mínimo — ampliado nos próximos passos
+tools:
+  - name: git
+    section: CLI Tools
+    brew:
+      formula: git
+    check_version_cmd: "git --version"
+
+  - name: fzf
+    section: CLI Tools
+    brew:
+      formula: fzf
+    check_version_cmd: "fzf --version | head -n1"

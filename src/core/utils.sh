@@ -17,8 +17,8 @@ err(){ _red "❌ $*" >&2; }
 info(){ printf "➜ %s\n" "$*"; }
 
 confirm(){
-  local msg="${1:-Confirmar?} (yes/NO) "
-  read -r -p "$msg" ans || true
+  local msg="${1:-Confirmar?}"
+  read -r -p "$msg (yes/NO) " ans || true
   [[ "$ans" =~ ^(y|Y|yes|YES)$ ]]
 }
 

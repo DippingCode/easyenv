@@ -67,3 +67,40 @@ do_section_install(){
     install_tool "$t"
   done
 }
+
+# Desinstala uma ferramenta com base no catálogo
+uninstall_tool(){
+  local name="$1"
+  local formula cask
+
+  formula="$(tool_field "$name" '.brew.formula // ""')"
+  cask="$(tool_field "$name" '.brew.cask // ""')"
+
+  prime_brew_shellenv
+  if ! command -v brew >/dev/null 2>&1; then
+    err "Homebrew não encontrado; não é possível desinstalar '$name' automaticamente."
+    return 1
+  fi
+
+  info "Desinstalando $name…"
+  brew_uninstall_if_installed "$formula"
+  brew_cask_uninstall_if_installed "$cask"
+
+  # limpa blocos no zshrc relacionados a essa tool (best effort)
+  zshrc_backup
+  zshrc_remove_tool_entries "$name"
+  ok "$name removido"
+}
+
+do_section_uninstall(){
+  local sec="$1"
+  info "Removendo seção: $sec"
+  local tools; mapfile -t tools < <(list_tools_by_section "$sec")
+  if (( ${#tools[@]} == 0 )); then
+    warn "Seção '$sec' vazia."
+    return 0
+  fi
+  for t in "${tools[@]}"; do
+    uninstall_tool "$t"
+  done
+}

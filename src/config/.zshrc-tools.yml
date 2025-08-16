@@ -1,0 +1,17 @@
+workspace:
+  theme:
+    selected: powerlevel10k
+    interactive_config: true
+  stacks_enabled:
+    - CLI Tools
+
+preferences:
+  init:
+    steps_mode_default: true
+    run_interactive_configs: true
+    skip_sections: []
+
+pins:
+  # exemplo: quando implementarmos init/clean/update, esses flags entram em ação
+  # git:
+  #   enabled: true

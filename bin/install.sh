@@ -1,65 +1,77 @@
 #!/usr/bin/env bash
-# bin/install.sh — instalador local (sem sudo)
-# Uso rápido:
-#   curl -fsSL https://raw.githubusercontent.com/DippingCode/easyenv/main/bin/install.sh | bash
-#
-# - Clona/atualiza o repo em ~/easyenv (ou EASYENV_HOME)
-# - Cria shim ~/.local/bin/easyenv que chama src/main.sh
-# - Garante ~/.zprofile com ~/.local/bin no PATH
-
+# EasyEnv - instalador 1-liner (macOS/Linux)
+# Uso:
+# /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/DippingCode/easyenv/main/bin/install.sh)"
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/DippingCode/easyenv.git}"
-EASYENV_HOME="${EASYENV_HOME:-$HOME/easyenv}"
-LOCAL_BIN="${LOCAL_BIN:-$HOME/.local/bin}"
-SHIM="$LOCAL_BIN/easyenv"
+# ---------------- UX helpers ----------------
+_bold(){ printf "\033[1m%s\033[0m\n" "$*"; }
+_green(){ printf "\033[32m%s\033[0m\n" "$*"; }
+_yel(){ printf "\033[33m%s\033[0m\n" "$*"; }
+_red(){ printf "\033[31m%s\033[0m\n" "$*"; }
+ok(){ _green "✅ $*"; }
+warn(){ _yel "⚠️  $*"; }
+err(){ _red "❌ $*"; }
+info(){ printf "-> %s\n" "$*"; }
+step(){ printf "\n>> %s\n" "$*"; }
 
-log() { printf "\033[1m%s\033[0m\n" "$*"; }
-ok()  { printf "\033[32m%s\033[0m\n" "✅ $*"; }
-warn(){ printf "\033[33m%s\033[0m\n" "⚠️  $*"; }
-err() { printf "\033[31m%s\033[0m\n" "❌ $*" >&2; }
+append_once_line(){ local f="$1" l="$2"; touch "$f"; grep -Fqx "$l" "$f" || echo "$l" >> "$f"; }
 
-require_cmd() {
-  command -v "$1" >/dev/null 2>&1 || { err "Dependência ausente: $1"; exit 1; }
-}
+# ---------------- Paths/Repo ----------------
+INSTALL_DIR="${EASYENV_HOME:-$HOME/easyenv}"
+REPO_URL="https://github.com/DippingCode/easyenv.git"
+ZPROFILE="$HOME/.zprofile"
+WRAP_DIR="$HOME/.local/bin"
+WRAP_BIN="$WRAP_DIR/easyenv"
 
-require_cmd git
+step "Instalando easyenv em: $INSTALL_DIR"
 
-log ">> Instalando easyenv em: $EASYENV_HOME"
-
-if [[ -d "$EASYENV_HOME/.git" ]]; then
-  log "-> Atualizando repositório existente…"
-  git -C "$EASYENV_HOME" pull --rebase --autostash
+# ---------------- Clone/Update --------------
+if [[ -d "$INSTALL_DIR/.git" ]]; then
+  info "Atualizando repositório…"
+  git -C "$INSTALL_DIR" pull --ff-only || warn "git pull falhou; seguindo com versão local."
 else
-  log "-> Clonando repositório…"
-  git clone --depth=1 "$REPO_URL" "$EASYENV_HOME"
+  info "Clonando repositório…"
+  git clone --depth=1 "$REPO_URL" "$INSTALL_DIR"
 fi
 
-# Cria shim local
-mkdir -p "$LOCAL_BIN"
-cat > "$SHIM" <<'SH'
+# ---------------- Wrapper no PATH -----------
+mkdir -p "$WRAP_DIR"
+cat > "$WRAP_BIN" <<'WRP'
 #!/usr/bin/env bash
 set -euo pipefail
 EASYENV_HOME="${EASYENV_HOME:-$HOME/easyenv}"
-exec "$EASYENV_HOME/src/main.sh" "$@"
-SH
-chmod +x "$SHIM"
-ok "Shim criado: $SHIM"
+# Chama via bash para evitar 'Permission denied' caso main.sh não tenha +x
+exec /usr/bin/env bash "$EASYENV_HOME/src/main.sh" "$@"
+WRP
+chmod +x "$WRAP_BIN"
+ok "Shim criado: $WRAP_BIN"
 
-# Garante ~/.local/bin no PATH via ~/.zprofile
-ZPROFILE="$HOME/.zprofile"
-if ! grep -qF 'export PATH="$HOME/.local/bin:$PATH"' "$ZPROFILE" 2>/dev/null; then
-  {
-    echo ''
-    echo '# >>> easyenv installer >>>'
-    echo 'export PATH="$HOME/.local/bin:$PATH"'
-    echo '# <<< easyenv installer <<<'
-  } >> "$ZPROFILE"
-  ok "PATH atualizado em ~/.zprofile (adicione ~/.local/bin)."
-else
-  warn "~/.local/bin já no PATH."
+# ---------------- PATH (~/.zprofile) --------
+mkdir -p "$(dirname "$ZPROFILE")"
+touch "$ZPROFILE"
+append_once_line "$ZPROFILE" 'export PATH="$HOME/.local/bin:$PATH"'
+ok "PATH atualizado em ~/.zprofile (adicione ~/.local/bin)."
+
+# ---------------- main.sh (perm) ------------
+if [[ -f "$INSTALL_DIR/src/main.sh" ]]; then
+  chmod +x "$INSTALL_DIR/src/main.sh" || true
 fi
 
+# ---------------- Banner EasyEnv ------------
+cat <<'BANNER'
+
+ ______                 ______                                               
+|  ____|               |  ____|        _     _                                    
+| |__   __ _ ___ _   _ | |__    ____  | |  / /                   
+|  __| / _` / __| | | ||  __|  |` _ \ | | / /                 
+| |___| (_| \__ \ |_| || |____ | | | || |/ /                  
+|______\__,_|___/\__, ||______||_| |_||___/                
+                   __/ |                                         
+                  |___/ EasyEnv — setup & toolbox CLI 
+
+BANNER
+
 ok "Instalação concluída! Abra um novo terminal ou rode:"
-echo "    source \"$ZPROFILE\""
+echo '    source "$HOME/.zprofile"'
 echo "e então:  easyenv --help"

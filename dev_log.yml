@@ -1,10 +1,60 @@
 tasks:
+  - name: "Fix installer permissions + help mínimo"
+    date: "2025-08-17T15:58:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "10"
+    task: "Corrigir permissões de execução e adicionar comando help básico"
+    commit: "fix(install): chmod +x e correção do banner; feat(help): adicionar help mínimo; chore(router): garantir execução via main.sh"
+    files_updated:
+      - path: "bin/install.sh"
+        type: "bash"
+      - path: "src/main.sh"
+        type: "bash"
+      - path: "src/core/router.sh"
+        type: "bash"
+    files_created:
+      - path: "src/presenter/cli/help.sh"
+        type: "bash"
+    summary:
+      - Corrigido erro **Permission denied** ao rodar `easyenv` após instalação (aplica `chmod +x` em `src/main.sh` e scripts essenciais).
+      - Ajustado banner para exibir **EasyEnv** (substitui rótulo incorreto).
+      - Adicionado comando **`easyenv help`** mínimo com listagem dinâmica de comandos.
+      - Router garante despacho via `main.sh` e prepara ponto único de logging.
+    notes:
+      - Se o shim antigo existir em `~/.local/bin/easyenv`, ele será sobrescrito; caso persista erro, apagar o shim manualmente e reinstalar.
+      - O help atual é básico; descreverá melhor cada comando quando os módulos forem migrados.
+    next_steps:
+      - Implementar `version --detailed` lendo a primeira entrada do `docs/dev_log.yml` (inclui version/build/summary/notes/next_steps).
+      - Criar `status`, `version` e `push` em `presenter/cli/` e integrar logging centralizado no router.
+
+  - name: "Fix install wrapper + banner EasyEnv"
+    date: "2025-08-17T15:55:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "09"
+    task: "Corrigir banner e erro de Permission denied no wrapper"
+    commit: "fix(install): wrapper chama bash main.sh; corrigir banner para EasyEnv"
+    files_updated:
+      - path: "bin/install.sh"
+        type: "bash"
+    summary:
+      - Wrapper agora invoca `bash src/main.sh`, evitando Permission denied.
+      - Banner renomeado para EasyEnv (removido resquício de Angular).
+      - Garante `~/.local/bin` no PATH e aplica `chmod +x` em `src/main.sh` se existir.
+    notes:
+      - Reexecutar o 1-liner atualiza o wrapper e corrige o PATH.
+    next_steps:
+      - Implementar `src/main.sh` e `core/router.sh` estáveis; `easyenv help` funcional.
+
   - name: "Core mínimo + logging centralizado"
     date: "2025-08-17T15:16:35-03:00"
     author: "easyenv-assistant"
     version_scope: "0.0.1"
     version: "0.0.1"
-    build: "05"
+    build: "08"
     task: "Criar utils/logging/guards e centralizar logging no router"
     commit: "feat(core): add utils/logging/guards; refactor(router): centralizar logging por comando; feat(cli): add help básico"
     files_created:

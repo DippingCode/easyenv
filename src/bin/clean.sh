@@ -50,7 +50,6 @@ cmd_clean(){
     zshrc_backup
 
     # Remova blocos mais comuns geridos pelo easyenv (idempotente)
-    # Se quiser, liste aqui as ferramentas que você costuma usar:
     for t in android nvm fvm python dotnet java go rust deno kotlin angular; do
       zshrc_remove_tool_blocks "$t" 2>/dev/null || true
     done
@@ -108,35 +107,22 @@ cmd_clean(){
       fi
     fi
 
+    local ver
+    ver="$(_tool_field "$t" ".version")"
+    [[ "$ver" == "null" ]] && ver=""
+
     # 1) tenta plugin: tool_uninstall
-    if plugin_load "$t" && declare -F tool_uninstall >/dev/null 2>&1; then
-      info "Desinstalando $t via plugin…"
-      if plugin_call tool_uninstall; then
-        ok "$t removido (plugin)."
-      else
-        warn "Falha ao desinstalar '$t' via plugin. Tentando catálogo/brew…"
-        # 2) tenta catálogo
-        if declare -F uninstall_tool >/dev/null 2>&1 && uninstall_tool "$t"; then
-          ok "$t removido (catálogo)."
-        else
-          # 3) fallback brew (formula e cask)
-          info "Removendo $t via Homebrew (formula/cask)…"
-          brew list --formula | grep -qx "$t" && brew uninstall "$t" || true
-          brew list --cask    | grep -qx "$t" && brew uninstall --cask "$t" || true
-          ok "$t removido (brew)."
-        fi
-      fi
+    if call_plugin_func_if_exists "$t" tool_uninstall "${ver:-}"; then
+      ok "$t removido (plugin)."
+    # 2) tenta catálogo
+    elif uninstall_tool "$t" "${ver:-}"; then
+      ok "$t removido (catálogo)."
     else
-      # sem plugin: tenta catálogo
-      if declare -F uninstall_tool >/dev/null 2>&1 && uninstall_tool "$t"; then
-        ok "$t removido (catálogo)."
-      else
-        # fallback brew
-        info "Removendo $t via Homebrew (formula/cask)…"
-        brew list --formula | grep -qx "$t" && brew uninstall "$t" || true
-        brew list --cask    | grep -qx "$t" && brew uninstall --cask "$t" || true
-        ok "$t removido (brew)."
-      fi
+      # 3) fallback brew
+      info "Removendo $t via Homebrew (formula/cask)…"
+      brew list --formula | grep -qx "$t" && brew uninstall "$t" || true
+      brew list --cask    | grep -qx "$t" && brew uninstall --cask "$t" || true
+      ok "$t removido (brew)."
     fi
 
     # Remover blocos dessa ferramenta do ~/.zshrc

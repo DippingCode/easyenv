@@ -156,9 +156,71 @@ tools:
               *) export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH" ;;
             esac
           fi
+          
+  - name: ios
+    section: Mobile
+    manager: cask
+    cask: xcode
+    description: "Xcode (iOS) e CocoaPods para dependências."
+    post_install:
+      - 'sudo xcodebuild -license accept || true'
+      - 'sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || true'
+      - 'which pod >/dev/null 2>&1 || sudo gem install cocoapods'
+    check:
+      - xcodebuild -version
+      - pod --version
+    zshrc_blocks:
+      - id: "EASYENV:IOS:env"
+        content: |
+          export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+          # CocoaPods precisa do Ruby/Gem no PATH (normal no macOS). Se necessário:
+          # export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
   - name: firebase
     section: Mobile
     manager: npm
     formula: firebase-tools
     description: "Firebase CLI — deploy, auth e ferramentas de projeto"
+
+  - name: react
+    section: Web
+    manager: npm_global
+    npm_global: create-vite
+    description: "Scaffolder moderno para apps React via Vite (npm create vite@latest)"
+    check:
+      - node -v
+      - npm -v
+      - create-vite --version
+    zshrc_blocks:
+      - id: "EASYENV:REACT:aliases"
+        content: |
+          # Atalhos React/Vite
+          alias react-new='npm create vite@latest'
+          alias react-new-react='npm create vite@latest my-react-app -- --template react'
+          alias vite-new='npm create vite@latest'
+  - name: react-native
+    section: Mobile
+    manager: npm_global
+    npm_global: react-native-cli
+    description: "React Native CLI para desenvolvimento mobile (Android/iOS)"
+    check:
+      - node -v
+      - npm -v
+      - react-native --version
+    zshrc_blocks:
+      - id: "EASYENV:REACTMOBILE:aliases"
+        content: |
+          # Atalhos React Native
+          alias rn-new='npx react-native init'
+          alias rn-ios='npx react-native run-ios'
+          alias rn-android='npx react-native run-android'
+          alias rn-start='npx react-native start'
+stacks:
+  react:
+    description: "Stack para desenvolvimento React (web) e React Native (mobile)."
+    includes:
+      - node
+      - react          # plugin/tool web (React)
+      - react-native   # plugin/tool mobile (React Native)
+      - android        # SDK/Emulador Android
+      - ios            # Xcode + CocoaPods

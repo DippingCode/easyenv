@@ -1,4 +1,24 @@
 tasks:
+  - name: "Fix printf no installer e harden de fluxo"
+    date: "2025-08-17T16:05:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "11"
+    task: "Corrigir printf, tornar instalador idempotente e robusto"
+    commit: "fix(install): usar 'printf --' e tornar instalação idempotente (clone/pull, shim, PATH)"
+    files_updated:
+      - path: "bin/install.sh"
+        type: "bash"
+    summary:
+      - Corrigido erro `printf: ->: invalid option` usando `printf --`.
+      - Instalador idempotente (clona ou atualiza, recria shim, garante PATH).
+      - Define permissão de execução para todos `.sh` em `src/`.
+    notes:
+      - Após instalação: `source ~/.zprofile` ou abra um novo terminal.
+    next_steps:
+      - Implementar `version --detailed` lendo a primeira entrada do `docs/dev_log.yml`.
+
   - name: "Fix installer permissions + help mínimo"
     date: "2025-08-17T15:58:00-03:00"
     author: "easyenv-assistant"

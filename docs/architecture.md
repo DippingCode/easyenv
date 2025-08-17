@@ -147,7 +147,8 @@ easyenv/
 │	├── INSTALL.md
 │	├── STACKS.md
 │   └── CONTRIBUTING.md
-│	
+│
+├── dev_log.yml	
 ├── .gitignore
 ├── LICENSE
 └── README.md						

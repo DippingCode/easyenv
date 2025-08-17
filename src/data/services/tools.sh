@@ -1,287 +1,319 @@
 #!/usr/bin/env bash
-# data/services/tools.sh — instala/atualiza/desinstala ferramentas do catálogo (config/tools.yml)
+# data/services/tools.sh — operações sobre o catálogo de ferramentas (config/tools.yml)
 
 set -euo pipefail
 
-# --------- helpers locais (isolados do core) ----------
-_color() { printf "%b%s%b" "\033[$1m" "$2" "\033[0m"; }
-_ok()    { printf "✅ %s\n" "$*"; }
-_info()  { printf "➜  %s\n" "$*"; }
-_warn()  { _color "33" "⚠ "; printf "%s\n" "$*"; }
-_err()   { _color "31" "✖ "; printf "%s\n" "$*" 1>&2; }
+EASYENV_HOME="${EASYENV_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+source "${EASYENV_HOME}/src/core/utils.sh"
+source "${EASYENV_HOME}/src/core/guards.sh"
 
-confirm() {
-  local msg="${1:-Confirmar?}"; local ans=""
-  read -r -p "$msg (yes/NO) " ans || true
-  [[ "$ans" =~ ^(y|Y|yes|YES)$ ]]
+# ---------- Pré-requisitos ----------
+__ensure_prereqs(){
+  # Git é necessário para clone de plugins e oh-my-zsh
+  require_cmd "git" "Instale git primeiro (no macOS já vem: Xcode CLT)."
+  # Homebrew (no macOS)
+  if ! command -v brew >/dev/null 2>&1; then
+    info "Homebrew não encontrado — instalando…"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # shellenv para sessão atual
+    if [[ -x /opt/homebrew/bin/brew ]]; then
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [[ -x /usr/local/bin/brew ]]; then
+      eval "$(/usr/local/bin/brew shellenv)"
+    fi
+  fi
+  # yq para ler o catálogo
+  if ! command -v yq >/dev/null 2>&1; then
+    info "Instalando yq…"
+    brew install yq
+  fi
 }
 
-# --------- paths ----------
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-EASYENV_HOME="${EASYENV_HOME:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
-CFG="$EASYENV_HOME/config/tools.yml"
-
-# --------- pre-reqs ----------
-ensure_git()  { command -v git  >/dev/null 2>&1 || { _err "git é necessário."; exit 1; }; }
-ensure_curl() { command -v curl >/dev/null 2>&1 || { _err "curl é necessário."; exit 1; }; }
-
-ensure_brew() {
-  if command -v brew >/dev/null 2>&1; then return 0; fi
-  _info "Homebrew não encontrado. Instalando…"
-  ensure_curl
-  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  _ok "Homebrew instalado."
+__brew_shellenv_now(){
+  if command -v brew >/dev/null 2>&1; then
+    local p; p="$(brew --prefix 2>/dev/null || true)"
+    if [[ -n "$p" && -x "$p/bin/brew" ]]; then
+      eval "$("$p/bin/brew" shellenv)"
+    fi
+  fi
 }
 
-brew_shellenv() {
-  if ! command -v brew >/dev/null 2>&1; then return 0; fi
-  # Aplica no ambiente deste processo
-  eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv)"
-  # Garante no zprofile (idempotente)
-  local zpf="$HOME/.zprofile"
-  grep -q 'brew shellenv' "$zpf" 2>/dev/null || {
-    {
-      echo ''
-      echo '# Added by easyenv (brew shellenv)'
-      echo 'eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv)"'
-    } >> "$zpf"
-    _ok "PATH do Homebrew adicionado ao ~/.zprofile"
-  }
+# ---------- Utilidades ----------
+__human_size(){
+  # bytes -> human (aproximado)
+  local bytes="${1:-0}"
+  awk -v b="$bytes" 'function hum(x){s="B   KB  MB  GB  TB  PB";n=split(s,a);for(i=1;i<=n&&x>=1024;i++)x/=1024;return sprintf("%.0f%s",x,a[i])} BEGIN{print hum(b)}'
 }
 
-ensure_yq() {
-  if command -v yq >/dev/null 2>&1; then return 0; fi
-  _info "Instalando yq…"
-  brew install yq
-  _ok "yq instalado."
+__jq_escape(){
+  # escape simples p/ json string
+  printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'
 }
 
-ensure_node_for_npm() {
-  if command -v npm >/dev/null 2>&1; then return 0; fi
-  _warn "npm não encontrado. Instalando Node (LTS) via Homebrew…"
-  brew install node
-  _ok "Node instalado (para npm global)."
+# ---------- Leitura do catálogo ----------
+__tools_count(){
+  local yml="$1"
+  yq -r '.tools | length' "$yml" 2>/dev/null || echo 0
 }
 
-# --------- runners ----------
-_run_install_script() {
-  local code="$1"
-  [[ -z "${code:-}" || "$code" == "null" ]] && return 0
-  bash -lc "$code"
+__tools_iter(){
+  # imprime nome|section|type|brew_formula|brew_cask
+  local yml="$1"
+  yq -r '.tools[] | [
+      (.name // ""),
+      (.section // ""),
+      (.type // ""),
+      (.brew.formula // ""),
+      (.brew.cask // "")
+    ] | @tsv' "$yml" 2>/dev/null \
+  | awk -F'\t' '{printf "%s|%s|%s|%s|%s\n",$1,$2,$3,$4,$5}'
 }
 
-_run_uninstall_script() {
-  local code="$1"
-  [[ -z "${code:-}" || "$code" == "null" ]] && return 0
-  bash -lc "$code"
+# ---------- Listagem ----------
+tools_service_list_plain(){
+  local yml="$1"
+  local n; n="$(__tools_count "$yml")"
+  echo "Ferramentas no catálogo (${n}):"
+  __tools_iter "$yml" | awk -F'|' '{printf " - %-20s %-10s (%s)\n",$1,$2,$3}'
 }
 
-# --------- unitários ----------
-_install_one() {
-  local name="$1" formula="$2" cask="$3" install_code="$4" extra_git_repo="$5" extra_git_dest="$6" extra_npm="$7"
+tools_service_list_detailed(){
+  local yml="$1"
+  local n; n="$(__tools_count "$yml")"
+  echo "Catálogo detalhado (${n}):"
+  echo
+  printf "%-20s %-12s %-8s  %-24s %-18s\n" "NAME" "SECTION" "TYPE" "BREW(FORMULA)" "BREW(CASK)"
+  printf -- "------------------------------------------------------------------------------------------\n"
+  __tools_iter "$yml" \
+    | while IFS='|' read -r name section type f c; do
+        printf "%-20s %-12s %-8s  %-24s %-18s\n" "$name" "$section" "$type" "${f:-"-"}" "${c:-"-"}"
+      done
+}
 
-  # brew (formula/cask)
+tools_service_list_json(){
+  local yml="$1"
+  yq -o=json '.tools' "$yml"
+}
+
+# ---------- Instalação/Atualização/Remoção ----------
+__run_block(){
+  local shcode="$1"
+  [[ -z "${shcode// }" ]] && return 0
+  # executa em subshell bash -lc para pegar PATH do brew shellenv
+  bash -lc "$shcode"
+}
+
+__ensure_node_for_npm(){
+  if ! command -v npm >/dev/null 2>&1; then
+    info "npm não encontrado — instalando Node (LTS) via brew…"
+    brew install node
+  fi
+}
+
+__install_one(){
+  local name="$1" section="$2" type="$3" formula="$4" cask="$5" yml="$6"
+
+  _bld "Instalando: $name"
+  __brew_shellenv_now
+
+  # brew formula/cask
   if [[ -n "$formula" && "$formula" != "null" ]]; then
-    if brew list "$formula" >/dev/null 2>&1; then
-      _info "brew: $formula já instalado."
+    if brew list --formula | grep -qx "$formula"; then
+      info "brew: $formula já instalado."
     else
-      _info "brew install $formula"
+      info "brew install $formula"
       brew install "$formula"
     fi
   fi
   if [[ -n "$cask" && "$cask" != "null" ]]; then
-    if brew list --cask "$cask" >/dev/null 2>&1; then
-      _info "cask: $cask já instalado."
+    if brew list --cask | grep -qx "$cask"; then
+      info "brew cask: $cask já instalado."
     else
-      _info "brew install --cask $cask"
+      info "brew install --cask $cask"
       brew install --cask "$cask"
     fi
   fi
 
-  # extra: git clone
-  if [[ -n "$extra_git_repo" && "$extra_git_repo" != "null" && -n "$extra_git_dest" && "$extra_git_dest" != "null" ]]; then
-    if [[ -d "$extra_git_dest/.git" ]]; then
-      _info "git: destino já existe ($extra_git_dest)."
+  # extra installs (npm/git/custom)
+  local npm_pkg; npm_pkg="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .extra.install_npm // empty' "$yml")"
+  local git_repo; git_repo="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .extra.install_git.repo // empty' "$yml")"
+  local git_dest; git_dest="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .extra.install_git.dest // empty' "$yml")"
+  local install_block; install_block="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .install // empty' "$yml")"
+
+  if [[ -n "$npm_pkg" && "$npm_pkg" != "null" ]]; then
+    __ensure_node_for_npm
+    info "npm i -g $npm_pkg"
+    npm install -g "$npm_pkg" || warn "Falha ao instalar npm:$npm_pkg (continuando)"
+  fi
+
+  if [[ -n "$git_repo" && "$git_repo" != "null" ]]; then
+    local d="${git_dest:-$HOME/.local/share/${name}}"
+    if [[ -d "$d/.git" ]]; then
+      info "git repo já presente em $d — atualizando…"
+      git -C "$d" pull --ff-only || true
     else
-      _info "git clone $extra_git_repo → $extra_git_dest"
-      git clone "$extra_git_repo" "$extra_git_dest"
+      info "git clone $git_repo → $d"
+      mkdir -p "$(dirname "$d")"
+      git clone "$git_repo" "$d" || warn "Falha ao clonar $git_repo"
     fi
   fi
 
-  # extra: npm global
-  if [[ -n "$extra_npm" && "$extra_npm" != "null" ]]; then
-    ensure_node_for_npm
-    _info "npm i -g $extra_npm"
-    npm install -g "$extra_npm"
+  if [[ -n "$install_block" && "$install_block" != "null" ]]; then
+    info "Rodando bloco install de $name…"
+    __run_block "$install_block" || warn "Bloco install falhou em $name (continuando)"
   fi
 
-  # install script
-  _run_install_script "$install_code"
+  # env/aliases/paths no ~/.zshrc
+  local zshrc_file="$HOME/.zshrc"
+  local env_count; env_count="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .env | length // 0' "$yml")"
+  local alias_count; alias_count="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .aliases | length // 0' "$yml")"
+  local paths_count; paths_count="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .paths | length // 0' "$yml")"
 
-  _ok "$name instalado."
+  if (( env_count + alias_count + paths_count > 0 )); then
+    local block="# >>> EASYENV:TOOL:${name} >>>"$'\n'
+    if (( env_count > 0 )); then
+      while IFS= read -r line; do
+        block+="${line}"$'\n'
+      done < <(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .env[]' "$yml")
+    fi
+    if (( alias_count > 0 )); then
+      while IFS= read -r line; do
+        block+="${line}"$'\n'
+      done < <(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .aliases[]' "$yml")
+    fi
+    if (( paths_count > 0 )); then
+      while IFS= read -r line; do
+        block+="${line}"$'\n'
+      done < <(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .paths[]' "$yml")
+    fi
+    block+="# <<< EASYENV:TOOL:${name} <<<"$'\n'
+    # remove bloco antigo e injeta novo (idempotente simples)
+    if [[ -f "$zshrc_file" ]]; then
+      awk -v s="# >>> EASYENV:TOOL:${name} >>>" -v e="# <<< EASYENV:TOOL:${name} <<<" '
+        BEGIN{skip=0}
+        $0==s {skip=1; next}
+        $0==e {skip=0; next}
+        skip==0 {print}
+      ' "$zshrc_file" > "$zshrc_file.__tmp" && mv "$zshrc_file.__tmp" "$zshrc_file"
+    fi
+    printf "\n%s" "$block" >> "$zshrc_file"
+  fi
+
+  ok "$name instalado."
 }
 
-_update_one() {
-  local name="$1" formula="$2" cask="$3" update_cmd="$4" extra_git_dest="$5" extra_npm="$6"
-
+__update_one(){
+  local name="$1" formula="$2" cask="$3" yml="$4"
+  __brew_shellenv_now
   brew update || true
-
-  if [[ -n "$update_cmd" && "$update_cmd" != "null" ]]; then
-    _info "$name: executando update_cmd…"
-    bash -lc "$update_cmd" || _warn "$name: update_cmd falhou (continuando)."
-    _ok "$name atualizado (update_cmd)."
-    return 0
+  if [[ -n "$formula" && "$formula" != "null" ]]; then
+    if brew list --formula | grep -qx "$formula"; then
+      info "brew upgrade $formula"
+      brew upgrade "$formula" || true
+    fi
   fi
-
-  if [[ -n "$formula" && "$formula" != "null" ]] && brew list "$formula" >/dev/null 2>&1; then
-    _info "brew upgrade $formula"
-    brew upgrade "$formula" || _warn "$name: falha no brew upgrade (continuando)."
-  fi
-  if [[ -n "$cask" && "$cask" != "null" ]] && brew list --cask "$cask" >/dev/null 2>&1; then
-    _info "brew upgrade --cask $cask"
-    brew upgrade --cask "$cask" || _warn "$name: falha no brew upgrade --cask (continuando)."
-  fi
-
-  # git pull
-  if [[ -n "$extra_git_dest" && "$extra_git_dest" != "null" && -d "$extra_git_dest/.git" ]]; then
-    _info "git -C \"$extra_git_dest\" pull"
-    git -C "$extra_git_dest" pull || _warn "$name: git pull falhou (continuando)."
-  fi
-
-  # npm update -g
-  if [[ -n "$extra_npm" && "$extra_npm" != "null" ]]; then
-    if command -v npm >/dev/null 2>&1; then
-      _info "npm update -g $extra_npm"
-      npm update -g "$extra_npm" || _warn "$name: npm update falhou (continuando)."
+  if [[ -n "$cask" && "$cask" != "null" ]]; then
+    if brew list --cask | grep -qx "$cask"; then
+      info "brew upgrade --cask $cask"
+      brew upgrade --cask "$cask" || true
     fi
   fi
 
-  _ok "$name atualizado."
+  local update_cmd; update_cmd="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .update_cmd // empty' "$yml")"
+  if [[ -n "$update_cmd" && "$update_cmd" != "null" ]]; then
+    __run_block "$update_cmd" || true
+  fi
+  ok "$name atualizado."
 }
 
-_uninstall_one() {
-  local name="$1" formula="$2" cask="$3" uninstall_code="$4" extra_git_dest="$5" extra_npm="$6"
-
-  # desinstala via brew
-  if [[ -n "$formula" && "$formula" != "null" ]] && brew list "$formula" >/dev/null 2>&1; then
-    _info "brew uninstall $formula"
+__uninstall_one(){
+  local name="$1" formula="$2" cask="$3" yml="$4"
+  __brew_shellenv_now
+  if [[ -n "$formula" && "$formula" != "null" ]] && brew list --formula | grep -qx "$formula"; then
+    info "brew uninstall $formula"
     brew uninstall "$formula" || true
   fi
-  if [[ -n "$cask" && "$cask" != "null" ]] && brew list --cask "$cask" >/dev/null 2>&1; then
-    _info "brew uninstall --cask $cask"
+  if [[ -n "$cask" && "$cask" != "null" ]] && brew list --cask | grep -qx "$cask"; then
+    info "brew uninstall --cask $cask"
     brew uninstall --cask "$cask" || true
   fi
 
-  # remove clone git, se existir (opcional)
-  if [[ -n "$extra_git_dest" && "$extra_git_dest" != "null" && -d "$extra_git_dest/.git" ]]; then
-    _info "removendo diretório git: $extra_git_dest"
-    rm -rf "$extra_git_dest"
+  local uninstall_block; uninstall_block="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .uninstall // empty' "$yml")"
+  if [[ -n "$uninstall_block" && "$uninstall_block" != "null" ]]; then
+    __run_block "$uninstall_block" || true
   fi
 
-  # remove npm global (opcional)
-  if [[ -n "$extra_npm" && "$extra_npm" != "null" ]] && command -v npm >/dev/null 2>&1; then
-    _info "npm uninstall -g $extra_npm"
-    npm uninstall -g "$extra_npm" || true
+  # limpar bloco do zshrc
+  local zshrc_file="$HOME/.zshrc"
+  if [[ -f "$zshrc_file" ]]; then
+    awk -v s="# >>> EASYENV:TOOL:${name} >>>" -v e="# <<< EASYENV:TOOL:${name} <<<" '
+      BEGIN{skip=0}
+      $0==s {skip=1; next}
+      $0==e {skip=0; next}
+      skip==0 {print}
+    ' "$zshrc_file" > "$zshrc_file.__tmp" && mv "$zshrc_file.__tmp" "$zshrc_file"
   fi
 
-  # script custom
-  _run_uninstall_script "$uninstall_code"
-
-  _ok "$name desinstalado."
+  ok "$name removido."
 }
 
-# --------- pipelines ----------
-install_all() {
-  ensure_git
-  ensure_brew
-  brew_shellenv
-  ensure_yq
+# ---------- Orquestradores públicos ----------
+tools_service_install_all(){
+  local yml="$1"
+  __ensure_prereqs
+  if [[ ! -f "$yml" ]]; then
+    err "Catálogo inexistente: $yml"
+    return 1
+  fi
+  __brew_shellenv_now
 
-  if [[ ! -f "$CFG" ]]; then
-    _err "Catálogo não encontrado: $CFG"
-    exit 1
+  # ordem: garanta oh-my-zsh / tema cedo
+  local ordered
+  ordered="$(yq -r '.tools | sort_by(.type == "core" ? 0 : 1) | .[] | .name' "$yml")"
+  if [[ -z "$ordered" ]]; then
+    warn "Nenhuma ferramenta definida em $yml"
+    return 0
   fi
 
-  while IFS=$'\t' read -r name formula cask install_code repo dest npm_pkg; do
-    [[ -z "$name" || "$name" == "null" ]] && continue
-    _info "Instalando: $name"
-    _install_one "$name" "$formula" "$cask" "$install_code" "$repo" "$dest" "$npm_pkg"
-  done < <(yq -r '.tools[] | [
-      .name,
-      (.brew.formula // ""),
-      (.brew.cask // ""),
-      (.install // ""),
-      (.extra.install_git.repo // ""),
-      (.extra.install_git.dest // ""),
-      (.extra.install_npm // "")
-    ] | @tsv' "$CFG")
+  while IFS='|' read -r name section type formula cask; do
+    __install_one "$name" "$section" "$type" "$formula" "$cask" "$yml"
+  done < <(__tools_iter "$yml")
 }
 
-update_all() {
-  ensure_brew
-  brew_shellenv
-  ensure_yq
+tools_service_update_all(){
+  local yml="$1"
+  __ensure_prereqs
+  if [[ ! -f "$yml" ]]; then
+    err "Catálogo inexistente: $yml"
+    return 1
+  fi
+  __brew_shellenv_now
+  while IFS='|' read -r name _ _ formula cask; do
+    __update_one "$name" "$formula" "$cask" "$yml"
+  done < <(__tools_iter "$yml")
+}
 
-  if [[ ! -f "$CFG" ]]; then
-    _err "Catálogo não encontrado: $CFG"
-    exit 1
+tools_service_uninstall_all(){
+  local yml="$1"
+  __ensure_prereqs
+  if [[ ! -f "$yml" ]]; then
+    err "Catálogo inexistente: $yml"
+    return 1
+  fi
+  echo
+  warn "Você está prestes a desinstalar TODAS as ferramentas listadas em $yml."
+  read -r -p "Confirmar? (yes/NO) " ans || true
+  if [[ ! "$ans" =~ ^(y|Y|yes|YES)$ ]]; then
+    info "Operação cancelada."
+    return 1
   fi
 
-  while IFS=$'\t' read -r name formula cask update_cmd dest npm_pkg; do
-    [[ -z "$name" || "$name" == "null" ]] && continue
-    _info "Atualizando: $name"
-    _update_one "$name" "$formula" "$cask" "$update_cmd" "$dest" "$npm_pkg"
-  done < <(yq -r '.tools[] | [
-      .name,
-      (.brew.formula // ""),
-      (.brew.cask // ""),
-      (.update_cmd // ""),
-      (.extra.install_git.dest // ""),
-      (.extra.install_npm // "")
-    ] | @tsv' "$CFG")
+  # desinstala em ordem inversa só por segurança
+  tac_out="$(__tools_iter "$yml" | tac || cat)" # se tac indisponível, cai no cat (ordem normal)
+  while IFS='|' read -r name _ _ formula cask; do
+    __uninstall_one "$name" "$formula" "$cask" "$yml"
+  done <<< "$tac_out"
+
+  # um cleanup leve do brew
+  brew cleanup -s || true
 }
-
-uninstall_all() {
-  ensure_brew
-  brew_shellenv
-  ensure_yq
-
-  if [[ ! -f "$CFG" ]]; then
-    _err "Catálogo não encontrado: $CFG"
-    exit 1
-  fi
-
-  while IFS=$'\t' read -r name formula cask uninstall_code dest npm_pkg; do
-    [[ -z "$name" || "$name" == "null" ]] && continue
-    _info "Desinstalando: $name"
-    _uninstall_one "$name" "$formula" "$cask" "$uninstall_code" "$dest" "$npm_pkg"
-  done < <(yq -r '.tools[] | [
-      .name,
-      (.brew.formula // ""),
-      (.brew.cask // ""),
-      (.uninstall // ""),
-      (.extra.install_git.dest // ""),
-      (.extra.install_npm // "")
-    ] | @tsv' "$CFG")
-}
-
-# --------- CLI local ----------
-usage() {
-  cat <<'EOF'
-Uso (serviço interno):
-  tools.sh bootstrap      # instala todas as ferramentas do catálogo
-  tools.sh update-all     # atualiza todas
-  tools.sh uninstall-all  # desinstala todas (sem confirmação)
-
-Observação: este arquivo é invocado por "easyenv tools <subcomando>".
-EOF
-}
-
-cmd="${1:-}"
-case "$cmd" in
-  bootstrap)      install_all ;;
-  update-all)     update_all ;;
-  uninstall-all)  uninstall_all ;;
-  ""|-h|--help)   usage; exit 0 ;;
-  *)              _err "Comando inválido: $cmd"; usage; exit 1 ;;
-esac

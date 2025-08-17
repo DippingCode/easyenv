@@ -1,0 +1,15 @@
+date: "2025-08-16T12:00:00-03:00"
+actor: "assistant"
+version_scope: "0.0.1..0.0.7 (bootstrap do changelog)"
+task: "Criar arquivo de changelog inicial"
+files_created:
+  - path: "relases.md"
+    type: "markdown"
+summary:
+  - Adicionado arquivo `relases.md` com histórico das versões 0.0.1 a 0.0.7.
+  - Estrutura alinhada ao backlog definido (DDD + etapas do MVP).
+notes:
+  - README deverá conter a seção 'Release version' consultada pela ferramenta.
+  - Datas das versões estão como placeholders (YYYY-MM-DD) para preencher no release real.
+next_steps:
+  - Iniciar 0.0.1: criar `src/main.sh`, `core/router.sh`, `core/{config,utils,logging,guards}.sh` e `presenter/cli/{help,version,status}.sh` (básico).

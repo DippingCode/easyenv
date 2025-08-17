@@ -157,7 +157,7 @@ install_tool(){
     inject_tool_zshrc_blocks "$name"
     ok "$name instalado (plugin)."
     return 0
-  fi()
+  fi
 
   # 2) Manager do YAML
   local manager formula cask npm_global tap

@@ -87,6 +87,9 @@ main() {
     doctor)
       cmd_doctor "$@"
       ;;
+    sync)
+      cmd_sync "@"
+      ;;
     *)
       err "Comando desconhecido: $cmd"
       echo
@@ -101,19 +104,27 @@ main() {
 # -----------------------------------------------------------------------------
 cmd_help() {
   cat <<EOF
+
 Uso: easyenv <comando> [opções]
 
 Comandos disponíveis:
-  status       Mostra status do workspace (tools, prefs, backups)
-  init         Inicializa ambiente (instala seções e tema)
-  backup       Cria/lista/restaura/apaga backups
-  theme        Gerencia tema do Oh My Zsh
-  add          Instala tool via brew e registra no catálogo
-  clean        Limpa cache, locks e diretórios temporários
-  update       Atualiza ferramentas/temas e snapshot
+  help            Mostra esta ajuda
+  --version       Mostra a versão do easyenv
+  status          Mostra o status (use --detailed)
+  init            Instala ferramentas (suporta -steps/-reload/-stack ...)
+  clean           Remove ferramentas/caches (-all|-soft|-section|--dry-run)
+  restore         Restaura (de backup, seção, ou total)
+  update          Atualiza ferramentas (—outdated, --dry-run)
+  backup          Cria/gera/restaura/remove backups
+  versions        Lista versões por ferramenta (node, flutter, .NET, etc.)
+  switch          Alterna versões (flutter/node/dotnet/java ...)
+  theme           Gerencia temas do Oh My Zsh
+  add             Adiciona ferramenta ao catálogo (Homebrew/npm)
+  doctor          Diagnóstico geral ou por ferramenta
 
 Opções globais:
-  -h, --help   Mostra esta ajuda
+  -h, --help      Mostra esta ajuda
+  -v, --version   Mostra a versão do easyenv
 
 Exemplos:
   easyenv status --detailed
@@ -129,6 +140,11 @@ EOF
 
 cmd_version(){
   echo "easyenv v$EASYENV_VERSION"
+}
+
+cmd_sync(){
+  ensure_workspace_dirs
+  write_snapshot_from_discovery
 }
 
 # -----------------------------------------------------------------------------

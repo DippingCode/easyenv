@@ -68,3 +68,63 @@ Library/
 Cellar/
 Caskroom/
 Homebrew/
+
+# =========================
+# easyenv — .gitignore
+# =========================
+
+# --- SO do macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# --- Linux/Windows artefatos ocasionais ---
+Thumbs.db
+ehthumbs.db
+Icon?
+.Spotlight-V100
+.Trashes
+
+# --- Editores/IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Node (se usado em plugins/stacks) ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# --- Python (se usado em scripts auxiliares) ---
+__pycache__/
+*.pyc
+*.pyo
+
+# --- Go/Rust caches (precaução) ---
+/bin/
+/dist/
+target/
+
+# --- Caches do zsh/oh-my-zsh ---
+.zcompdump*
+*.zwc
+.zsh_sessions
+
+# --- Arquivos de ambiente locais ---
+.env
+.env.*
+config/.env
+
+# --- Pastas de runtime do easyenv ---
+/var/
+/backups/
+
+# --- Logs/temporários genéricos ---
+*.log
+*.tmp
+*.bak
+
+# --- Zips/arquivos grandes gerados (evitar por padrão) ---
+# (backups já estão em /backups ou /var/backups, mas fica a proteção extra)
+# *.zip

@@ -1,15 +1,41 @@
-date: "2025-08-16T12:00:00-03:00"
-actor: "assistant"
-version_scope: "0.0.1..0.0.7 (bootstrap do changelog)"
-task: "Criar arquivo de changelog inicial"
-files_created:
-  - path: "relases.md"
-    type: "markdown"
-summary:
-  - Adicionado arquivo `relases.md` com histórico das versões 0.0.1 a 0.0.7.
-  - Estrutura alinhada ao backlog definido (DDD + etapas do MVP).
-notes:
-  - README deverá conter a seção 'Release version' consultada pela ferramenta.
-  - Datas das versões estão como placeholders (YYYY-MM-DD) para preencher no release real.
-next_steps:
-  - Iniciar 0.0.1: criar `src/main.sh`, `core/router.sh`, `core/{config,utils,logging,guards}.sh` e `presenter/cli/{help,version,status}.sh` (básico).
+tasks:
+  - name: "Criação dos novos arquivos"
+    date: "2025-08-16T12:00:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1..0.0.7 (bootstrap do changelog)"
+    version: "0.0.1"
+    task: "Criar arquivo de changelog inicial"
+    commit: "texto para adicionar ao commit"
+    files_updated:
+      - path: "readme.md"
+        type: "markdown"
+    files_created:
+      - path: "relases.md"
+        type: "markdown"
+    summary:
+      - Adicionado arquivo `relases.md` com histórico das versões 0.0.1 a 0.0.7.
+      - Estrutura alinhada ao backlog definido (DDD + etapas do MVP).
+    notes:
+      - README deverá conter a seção 'Release version' consultada pela ferramenta.
+      - Datas das versões estão como placeholders (YYYY-MM-DD) para preencher no release real.
+    next_steps:
+      - Iniciar 0.0.1: criar `src/main.sh`, `core/router.sh`, `core/{config,utils,logging,guards}.sh` e `presenter/cli/{help,version,status}.sh` (básico).
+      
+  - name: "Padronização do .gitignore (runtime e lixos)"
+    date: "2025-08-17T00:00:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    task: "Atualizar .gitignore para ignorar var/ e backups/ (runtime), além de artefatos de SO/editores."
+    commit: "chore(gitignore): ignorar var/ e backups/ + lixos comuns (macOS, IDEs, caches zsh)"
+    files_updated:
+      - path: ".gitignore"
+        type: "config"
+    files_created: []
+    summary:
+      - Evita versionar diretórios de runtime (`/var`, `/backups`) e arquivos temporários.
+      - Inclui regras para macOS (.DS_Store), IDEs (.vscode/, .idea/), caches do zsh (.zcompdump*).
+    notes:
+      - Caso precise versionar algo em /var no futuro, usar exceção com prefixo `!`.
+    next_steps:
+      - Iniciar 0.0.1: scaffolding DDD — criar `src/main.sh`, `src/core/{config.sh,utils.sh,logging.sh,router.sh,guards.sh}` e `src/presenter/cli/{help.sh,version.sh,status.sh}`.

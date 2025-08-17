@@ -17,6 +17,12 @@ cmd_tools() {
     list)
       _tools_list "$@"
       ;;
+    update)
+      _tools_update "$@"
+      ;;
+    uninstall|remove)
+      _tools_uninstall "$@"
+      ;;
     *)
       err "Subcomando desconhecido: $sub"
       echo
@@ -32,14 +38,17 @@ Uso:
   easyenv tools <subcomando>
 
 Subcomandos:
-  install                 Instala os pré-requisitos e utilitários definidos em config/tools.yml
-  list [--detailed]       Lista o catálogo de ferramentas (opção --json para saída crua)
+  install                    Instala os pré-requisitos e utilitários definidos em config/tools.yml
+  list [--detailed|--json]   Lista o catálogo de ferramentas
+  update                     Atualiza todas as ferramentas do catálogo
+  uninstall                  Desinstala todas as ferramentas do catálogo (confirmação interativa)
 
 Exemplos:
   easyenv tools install
   easyenv tools list
   easyenv tools list --detailed
-  easyenv tools list --json
+  easyenv tools update
+  easyenv tools uninstall
 EOF
 }
 
@@ -54,7 +63,6 @@ _tools_install() {
   fi
 
   info "Iniciando instalação das ferramentas (config/tools.yml)…"
-  # delega a instalação ao serviço (ele garante brew + yq etc.)
   /usr/bin/env bash "$svc" bootstrap
   local ec=$?
 
@@ -121,48 +129,68 @@ _tools_list() {
   printf "%0.s-" {1..88}; echo
 
   # Itera ferramentas
-  # Campos: section, name, type, brew.formula, brew.cask, check_version_cmd
   while IFS=$'\t' read -r section name type formula cask checkcmd; do
     [[ -z "$name" || "$name" == "null" ]] && continue
 
     local status="—" ver="—"
 
     if (( detailed==1 )); then
-      # 1) Se existe check_version_cmd, ele é a fonte de verdade
       if [[ -n "${checkcmd:-}" && "$checkcmd" != "null" ]]; then
         if out="$(bash -lc "$checkcmd" 2>/dev/null | head -n1)"; then
-          if [[ -n "$out" ]]; then
-            status="OK"; ver="$out"
-          else
-            status="faltando"
-          fi
+          if [[ -n "$out" ]]; then status="OK"; ver="$out"; else status="faltando"; fi
         else
           status="faltando"
         fi
-      # 2) Se tem brew formula/cask, consulta ao Homebrew
       elif [[ -n "${formula:-}" && "$formula" != "null" ]]; then
-        if brew list "$formula" >/dev/null 2>&1; then
-          status="OK"; ver="brew:$formula"
-        else
-          status="faltando"
-        fi
+        if brew list "$formula" >/dev/null 2>&1; then status="OK"; ver="brew:$formula"; else status="faltando"; fi
       elif [[ -n "${cask:-}" && "$cask" != "null" ]]; then
-        if brew list --cask "$cask" >/dev/null 2>&1; then
-          status="OK"; ver="cask:$cask"
-        else
-          status="faltando"
-        fi
-      # 3) Fallback: command -v
+        if brew list --cask "$cask" >/dev/null 2>&1; then status="OK"; ver="cask:$cask"; else status="faltando"; fi
       else
-        if command -v "$name" >/dev/null 2>&1; then
-          status="OK"; ver="$(command -v "$name")"
-        else
-          status="faltando"
-        fi
+        if command -v "$name" >/dev/null 2>&1; then status="OK"; ver="$(command -v "$name")"; else status="faltando"; fi
       fi
     fi
 
     printf "%-14s  %-20s  %-10s  %-10s  %s\n" \
       "${section:--}" "$name" "${type:--}" "$status" "$ver"
   done < <(yq -r '.tools[] | [.section // "-", .name, .type // "-", (.brew.formula // ""), (.brew.cask // ""), (.check_version_cmd // "")] | @tsv' "$cfg")
+}
+
+# --------------------------
+# tools update
+# --------------------------
+_tools_update() {
+  local svc="$EASYENV_HOME/src/data/services/tools.sh"
+  if [[ ! -f "$svc" ]]; then
+    err "Serviço não encontrado: $svc"
+    return 1
+  fi
+
+  info "Atualizando todas as ferramentas do catálogo…"
+  /usr/bin/env bash "$svc" update-all
+  local ec=$?
+  (( ec==0 )) && ok "Atualização concluída."
+  return $ec
+}
+
+# --------------------------
+# tools uninstall
+# --------------------------
+_tools_uninstall() {
+  local svc="$EASYENV_HOME/src/data/services/tools.sh"
+  if [[ ! -f "$svc" ]]; then
+    err "Serviço não encontrado: $svc"
+    return 1
+  fi
+
+  echo
+  warn "Isto irá desinstalar TODAS as ferramentas definidas no catálogo."
+  if ! confirm "Deseja continuar?"; then
+    info "Operação cancelada."
+    return 1
+  fi
+
+  /usr/bin/env bash "$svc" uninstall-all
+  local ec=$?
+  (( ec==0 )) && ok "Desinstalação concluída."
+  return $ec
 }

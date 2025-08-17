@@ -1,4 +1,53 @@
 tasks:
+  - name: “Ferramentas: update & uninstall (catálogo)”
+    date: “2025-08-17T16:45:00-03:00”
+    author: “easyenv-assistant”
+    version_scope: “0.0.1”
+    version: “0.0.1”
+    build: “18”
+    task: “Adicionar comandos para atualizar e desinstalar todas as ferramentas do catálogo”
+    commit: “feat(tools): add update/uninstall for all catalog tools via data/services/tools.sh”
+    files_created:
+    	-	path: “src/data/services/tools.sh”
+        type: “bash”
+    files_updated:
+    	-	path: “src/presenter/cli/tools.sh”
+        type: “bash”
+    summary:
+      -	Novo easyenv tools update para atualizar todas as ferramentas definidas em config/tools.yml.
+      -	Novo easyenv tools uninstall para desinstalar todas as ferramentas do catálogo (com confirmação).
+      -	Serviço data/services/tools.sh faz o trabalho pesado (brew/yq/git/npm), isolando a infra do presenter.
+      -	`Garantias automáticas:` Homebrew + brew shellenv + yq; Node é instalado se necessário para pacotes npm globais.
+      -	tools list continua disponível com --detailed e --json.
+    notes:
+    	-	O tools uninstall pergunta confirmação antes de remover tudo.
+    	-	tools update executa brew update e tenta update_cmd específico quando definido no catálogo.
+    	-	O serviço usa bash -lc para executar scripts de instalação/remoção definidos no YAML.
+    next_steps:
+    	-	Integrar easyenv tools install ao bin/install.sh como etapa pós-clone opcional.
+    	-	Expandir config/tools.yml com mais utilitários (chezmoi, docker-compose-switch, lolcat etc).
+    	-	Adicionar easyenv doctor e easyenv sync para diagnóstico e espelhamento do ambiente.
+
+  - name: "Comando tools list"
+    date: "2025-08-17T17:05:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "17"
+    task: "Adicionar easyenv tools list (listagem do catálogo de ferramentas)"
+    commit: "feat(tools): implementar listagem com --detailed e --json"
+    files_updated:
+      - path: "src/presenter/cli/tools.sh"
+        type: "bash"
+    summary:
+      - `easyenv tools list` lê `config/tools.yml` e exibe Seção/Nome/Tipo/Status/Versão.
+      - `--detailed` tenta detectar instalação/versão (check_version_cmd → brew → command -v).
+      - `--json` imprime o array `.tools` em JSON (dump direto do YAML).
+    notes:
+      - Requer `yq` instalado (já tratado pelo `tools install`).
+    next_steps:
+      - Implementar `easyenv tools update` e `easyenv tools doctor`.
+
   - name: "Comando tools install"
     date: "2025-08-17T16:55:00-03:00"
     author: "easyenv-assistant"

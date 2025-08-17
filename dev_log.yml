@@ -1,4 +1,24 @@
 tasks:
+  - name: "Fix logging: quotes e compat wrappers"
+    date: "2025-08-17T16:20:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "12"
+    task: "Corrigir logging.sh (quotes/EOF), unificar API e compatibilidade"
+    commit: "fix(logging): corrigir quotes e expor wrappers compatíveis; user.log/debug.log robustos"
+    files_updated:
+      - path: "src/core/logging.sh"
+        type: "bash"
+    summary:
+      - Corrige erro `EOF inesperado` por aspas desbalanceadas.
+      - user.log em JSON Lines; debug.log com stdout/stderr correlacionado.
+      - Mantém wrappers (`log_request_start/end`, `log_line`) para compat.
+    notes:
+      - Router deve redirecionar stdout/stderr para `$EASYENV_LOG_STDOUT/$EASYENV_LOG_STDERR`.
+    next_steps:
+      - Implementar `version --detailed` lendo a primeira entrada do `docs/dev_log.yml`.
+      
   - name: "Fix printf no installer e harden de fluxo"
     date: "2025-08-17T16:05:00-03:00"
     author: "easyenv-assistant"

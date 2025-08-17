@@ -1,89 +1,123 @@
 #!/usr/bin/env bash
-# src/core/logging.sh
-# Logging estruturado:
-#  - user.log: id | timestamp | cmd | args | result(Success|Error)
-#  - debug.log: linhas com id | timestamp | stream(STDOUT|STDERR|META) | mensagem
-# Fornece run_with_logging <function> [args...] para capturar toda a saída.
+# EasyEnv - core/logging.sh
+# - user.log: JSON lines com {id, ts, cmd, args, status, exit_code, duration_ms}
+# - debug.log: bloco com stdout/stderr correlacionado pelo mesmo id
 
 set -euo pipefail
 
-# Requer utils (iso_now, gen_uuid, ensure_dir)
-: "${EASYENV_HOME:="${EASYENV_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"}"}"
-LOG_DIR="$EASYENV_HOME/var/logs"
+# ---------- Paths ----------
+EASYENV_HOME="${EASYENV_HOME:-$HOME/easyenv}"
+LOG_DIR="${EASYENV_LOG_DIR:-$EASYENV_HOME/var/logs}"
 USER_LOG="$LOG_DIR/user.log"
 DEBUG_LOG="$LOG_DIR/debug.log"
 
-log_init(){
-  ensure_dir "$LOG_DIR"
-  : "${USER_LOG:?}"; : "${DEBUG_LOG:?}"
-  # cria arquivos se não existirem
-  : > /dev/null >> "$USER_LOG"
-  : > /dev/null >> "$DEBUG_LOG"
+mkdir -p "$LOG_DIR"
+
+# ---------- Helpers ----------
+__now_iso() {
+  # ISO-8601 com timezone
+  date +"%Y-%m-%dT%H:%M:%S%z"
 }
 
-# Inicia contexto, retorna GUID
-log_start(){
-  local cmd="$1"; shift || true
-  local args_str; args_str="$(printf "%q " "$@")"
-  local id; id="$(gen_uuid)"
-  local ts; ts="$(iso_now)"
-  echo -e "${id}\t${ts}\t${cmd}\t${args_str}\tSTART" >> "$DEBUG_LOG"
-  # salva contexto atual
-  export EASYENV_LAST_LOG_ID="$id"
-  echo "$id"
+__gen_uuid() {
+  if command -v uuidgen >/dev/null 2>&1; then
+    uuidgen
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 - <<'PY'
+import uuid; print(uuid.uuid4())
+PY
+  else
+    # Fallback: pseudo-uuid estável o suficiente p/ correlação
+    local seed hex
+    seed="$(date +%s)-$$-$RANDOM-$RANDOM"
+    hex="$(printf '%s' "$seed" | shasum -a 1 2>/dev/null | awk '{print $1}')"
+    printf "%s-%s-%s-%s-%s\n" "${hex:0:8}" "${hex:8:4}" "${hex:12:4}" "${hex:16:4}" "${hex:20:12}"
+  fi
 }
 
-# Linha detalhada no debug (stream = META|STDOUT|STDERR)
-log_debug_line(){
-  local id="$1" stream="$2" msg="$3"
-  local ts; ts="$(iso_now)"
-  # preserva quebras múltiplas
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    echo -e "${id}\t${ts}\t${stream}\t${line}" >> "$DEBUG_LOG"
-  done <<<"$msg"
+# macOS vs GNU date: calcula duração em ms se possível
+__duration_ms_or_null() {
+  local start_ts="$1"
+  # tenta macOS first (-j -f), senão GNU date -d; se falhar, null
+  local start_epoch end_epoch
+  if start_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "$start_ts" "+%s" 2>/dev/null); then
+    :
+  elif start_epoch=$(date -d "$start_ts" +%s 2>/dev/null); then
+    :
+  else
+    echo "null"; return 0
+  fi
+  end_epoch=$(date +%s)
+  echo $(( (end_epoch - start_epoch) * 1000 ))
 }
 
-# Finaliza contexto e escreve user.log
-log_finish(){
-  local id="$1" cmd="$2"; shift 2 || true
-  local args_str; args_str="$(printf "%q " "$@")"
-  local status="${!#}" # último argumento deve ser status numérico
-  # remove status do args_str
-  args_str="${args_str% ${status}}"
-  local ts; ts="$(iso_now)"
-  local result="Success"
-  [[ "$status" -ne 0 ]] && result="Error"
+# ---------- Estado corrente do log (exportado p/ router) ----------
+# EASYENV_LOG_ID, EASYENV_LOG_TS, EASYENV_LOG_CMD, EASYENV_LOG_ARGS
+# EASYENV_LOG_STDOUT, EASYENV_LOG_STDERR
 
-  # user log (compacto)
-  echo -e "${id}\t${ts}\t${cmd}\t${args_str}\t${result}" >> "$USER_LOG"
-  # debug log (marcador de fim)
-  echo -e "${id}\t${ts}\tMETA\tEND status=${status} result=${result}" >> "$DEBUG_LOG"
+logging_begin() {
+  # Uso: logging_begin <cmd> [args...]
+  EASYENV_LOG_ID="$(__gen_uuid)"; export EASYENV_LOG_ID
+  EASYENV_LOG_TS="$(__now_iso)"; export EASYENV_LOG_TS
+  EASYENV_LOG_CMD="${1:-}"; shift || true
+  EASYENV_LOG_ARGS="$*"; export EASYENV_LOG_CMD EASYENV_LOG_ARGS
+
+  # arquivos temporários para captura (o router deve redirecionar para eles)
+  EASYENV_LOG_STDOUT="/tmp/easyenv-${EASYENV_LOG_ID}.out"
+  EASYENV_LOG_STDERR="/tmp/easyenv-${EASYENV_LOG_ID}.err"
+  : > "$EASYENV_LOG_STDOUT"
+  : > "$EASYENV_LOG_STDERR"
 }
 
-# Executa uma função e captura TODA a saída (stdout/stderr) para o debug.log,
-# mantendo a saída visível ao usuário.
-# Uso: run_with_logging func_name [args...]
-run_with_logging(){
-  log_init
-  local func="$1"; shift || true
-  local id; id="$(log_start "$func" "$@")"
-  local status=0
+logging_end() {
+  # Uso: logging_end <exit_code>
+  local code="${1:-0}"
+  local status="Success"
+  (( code != 0 )) && status="Error"
 
-  # Encaminha STDOUT/STDERR para debug + terminal
+  local dur_ms
+  dur_ms="$(__duration_ms_or_null "${EASYENV_LOG_TS:-}")"
+
+  # user.log como JSONL
+  printf '{"id":"%s","ts":"%s","cmd":"%s","args":"%s","status":"%s","exit_code":%d,"duration_ms":%s}\n' \
+    "${EASYENV_LOG_ID:-unknown}" \
+    "${EASYENV_LOG_TS:-$(__now_iso)}" \
+    "${EASYENV_LOG_CMD:-unknown}" \
+    "$(printf '%s' "${EASYENV_LOG_ARGS:-}" | sed 's/"/\\"/g')" \
+    "$status" "$code" "$dur_ms" >> "$USER_LOG"
+
+  # debug.log detalhado
   {
-    {
-      # executa a função no ambiente atual
-      "$func" "$@"
-    } 2> >(while IFS= read -r line; do
-             log_debug_line "$id" "STDERR" "$line"
-             printf "%s\n" "$line" >&2
-           done)
-  } | while IFS= read -r line; do
-        log_debug_line "$id" "STDOUT" "$line"
-        printf "%s\n" "$line"
-      done
-  status=${PIPESTATUS[0]}
+    printf '----- EASYENV DEBUG id=%s ts=%s cmd=%s args=%q -----\n' \
+      "${EASYENV_LOG_ID:-unknown}" \
+      "${EASYENV_LOG_TS:-$(__now_iso)}" \
+      "${EASYENV_LOG_CMD:-unknown}" \
+      "${EASYENV_LOG_ARGS:-}"
+    printf '[stdout]\n'
+    cat "${EASYENV_LOG_STDOUT:-/dev/null}" 2>/dev/null || true
+    printf '\n[stderr]\n'
+    cat "${EASYENV_LOG_STDERR:-/dev/null}" 2>/dev/null || true
+    printf '\n[exit]=%d\n' "$code"
+    printf '----- end id=%s -----\n\n' "${EASYENV_LOG_ID:-unknown}"
+  } >> "$DEBUG_LOG"
 
-  log_finish "$id" "$func" "$@" "$status"
-  return "$status"
+  # limpeza
+  rm -f "${EASYENV_LOG_STDOUT:-}" "${EASYENV_LOG_STDERR:-}" 2>/dev/null || true
+}
+
+# ---------- Wrappers de compatibilidade ----------
+# Alguns routers/legados podem chamar estes nomes:
+log_request_start() { logging_begin "$@"; }
+log_request_end()   { logging_end "${1:-0}"; }
+router_log_start()  { logging_begin "$@"; }
+router_log_end()    { logging_end "${1:-0}"; }
+begin_cmd_log()     { logging_begin "$@"; }
+end_cmd_log()       { logging_end "${1:-0}"; }
+
+# Evento simples (compat)
+# Uso: log_line <cmd> <stage> <status>
+log_line() {
+  local cmd="${1:-?}" stage="${2:-?}" status="${3:-?}"
+  printf '{"id":"%s","ts":"%s","event":"%s","stage":"%s","status":"%s"}\n' \
+    "${EASYENV_LOG_ID:-none}" "$(__now_iso)" "$cmd" "$stage" "$status" >> "$USER_LOG"
 }

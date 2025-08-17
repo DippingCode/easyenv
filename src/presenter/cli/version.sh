@@ -45,8 +45,7 @@ Uso:
   easyenv version [--detailed]
 
 Descrição:
-  Lê a versão atual a partir do arquivo dev_log.yml (na raiz do repositório).
-  Se não existir, tenta docs/dev_log.yml.
+  Exibe a versão atual.
 
 Opções:
   --detailed, -d   Mostra detalhes desta build (summary, notes, next_steps).

@@ -8,7 +8,7 @@ cmd_help() {
   cat <<'HDR'
   
 ┌─────────────────────────────────────────────────────┐
-│                    EasyEnv - Help                  │
+│                    EasyEnv - Help                   │
 └─────────────────────────────────────────────────────┘
 HDR
 
@@ -67,7 +67,7 @@ __help_desc_for() {
   local k="$1"
   case "$k" in
     help)       echo "Mostra esta ajuda" ;;
-    version)    echo "Exibe a versão atual (lê docs/dev_log.yml)" ;;
+    version)    echo "Exibe a versão atual" ;;
     status)     echo "Resumo do ambiente; --detailed mostra versões e checks" ;;
     init)       echo "Instala/Configura por seções ou stacks" ;;
     clean)      echo "Remove ferramentas e/ou faz limpeza de caches" ;;

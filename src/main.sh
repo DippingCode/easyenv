@@ -1,35 +1,22 @@
 #!/usr/bin/env bash
-# EasyEnv — ponto de entrada
-# Responsável apenas por compor os módulos core e delegar ao router.
+# src/main.sh — ponto de entrada
 
 set -euo pipefail
 
-# Resolve diretórios
-# main.sh fica em: <repo>/src/main.sh  → EASYENV_HOME = <repo>
-__BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export EASYENV_HOME="${EASYENV_HOME:-"$(cd "${__BASE_DIR}/.." && pwd)"}"
+# BASE_DIR = .../easyenv/src
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# PROJECT_ROOT = .../easyenv
+PROJECT_ROOT="$(cd "$BASE_DIR/.." && pwd)"
 
-# Caminhos core
-CORE_DIR="$EASYENV_HOME/src/core"
-LOG_DIR="$EASYENV_HOME/var/logs"
+# EASYENV_HOME aponta para a RAIZ do projeto (não para src/)
+export EASYENV_HOME="${EASYENV_HOME:-$PROJECT_ROOT}"
 
-# Carrega módulos core (alguns podem ainda não existir nas primeiras builds)
-# Cada "source" é tolerante a ausência, mas o router é obrigatório.
-[[ -f "$CORE_DIR/config.sh"   ]] && source "$CORE_DIR/config.sh"
-[[ -f "$CORE_DIR/utils.sh"    ]] && source "$CORE_DIR/utils.sh"
-[[ -f "$CORE_DIR/logging.sh"  ]] && source "$CORE_DIR/logging.sh"
-[[ -f "$CORE_DIR/guards.sh"   ]] && source "$CORE_DIR/guards.sh"
+# Carrega core
+source "$BASE_DIR/core/config.sh"
+source "$BASE_DIR/core/utils.sh"
+source "$BASE_DIR/core/logging.sh"
+source "$BASE_DIR/core/guards.sh"
+source "$BASE_DIR/core/router.sh"
 
-# Router é obrigatório
-if [[ ! -f "$CORE_DIR/router.sh" ]]; then
-  echo "❌ core/router.sh não encontrado em: $CORE_DIR" >&2
-  echo "   Estrutura esperada: $EASYENV_HOME/src/core/router.sh" >&2
-  exit 1
-fi
-source "$CORE_DIR/router.sh"
-
-# Garante diretório de logs
-mkdir -p "$LOG_DIR"
-
-# Despacha o comando
+# Despacha
 router_dispatch "$@"

@@ -1,12 +1,19 @@
-# Catálogo de ferramentas base para bootstrap do EasyEnv
-# Campos principais por tool:
-# - name, section (zsh|cli|devops|net|ux), type (core|theme|cli)
-# - brew: { formula, cask }
-# - install / uninstall / update_cmd / check_version_cmd
-# - env[] / aliases[] / paths[]  (injetados no ~/.zshrc)
+# Catálogo de ferramentas do EasyEnv
+# Campos suportados por item:
+# - name, section, type (core|theme|cli|stack), description, homepage
+# - brew: { formula: <nome>, cask: <nome> } (opcional)
+# - install, uninstall (scripts opcionais, multiline)
+# - check_version_cmd, update_cmd
+# - deprecated: true|false
+# - cleanup: [ ... ]
+# - env: [ linhas a injetar no zshrc ]
+# - aliases: [ ... ]
+# - paths: [ ... ]
+# - interactive_config: true|false
+# - config_cmd, config_notes
 
 tools:
-  # ===================== ZSH / CORE =====================
+  # ===== ZSH / CORE =====
   - name: oh-my-zsh
     section: zsh
     type: core
@@ -21,9 +28,14 @@ tools:
     uninstall: rm -rf "$HOME/.oh-my-zsh"
     check_version_cmd: 'test -d "$HOME/.oh-my-zsh" && echo "oh-my-zsh installed" || echo "missing"'
     update_cmd: "omz update || true"
+    deprecated: false
+    cleanup: [ "~/.zcompdump*" ]
     env: []
     aliases: []
     paths: []
+    interactive_config: false
+    config_cmd: ""
+    config_notes: ""
 
   - name: powerlevel10k
     section: zsh
@@ -32,64 +44,37 @@ tools:
     homepage: https://github.com/romkatv/powerlevel10k
     brew:
       formula: powerlevel10k
-    install: |
-      mkdir -p "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes"
+    install: ""
     uninstall: "brew uninstall powerlevel10k || true"
-    check_version_cmd: 'p10k version || true'
+    check_version_cmd: 'p10k version 2>/dev/null || echo "p10k (verifique instalação)"'
     update_cmd: "brew upgrade powerlevel10k || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: []
     paths: []
+    interactive_config: false
+    config_cmd: ""
+    config_notes: ""
 
-  - name: zsh-autosuggestions
-    section: zsh
+  # ===== UTILITÁRIOS CLI =====
+  - name: yq
+    section: cli
     type: cli
-    description: sugestões no zsh
-    homepage: https://github.com/zsh-users/zsh-autosuggestions
+    description: Processador YAML
+    homepage: https://mikefarah.gitbook.io/yq/
     brew:
-      formula: zsh-autosuggestions
+      formula: yq
     install: ""
-    uninstall: "brew uninstall zsh-autosuggestions || true"
-    check_version_cmd: "zsh -ic 'echo $ZSH_VERSION && echo autosuggestions-ok'"
-    update_cmd: "brew upgrade zsh-autosuggestions || true"
+    uninstall: "brew uninstall yq || true"
+    check_version_cmd: "yq --version"
+    update_cmd: "brew upgrade yq || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: []
     paths: []
 
-  - name: zsh-syntax-highlighting
-    section: zsh
-    type: cli
-    description: highlight de sintaxe
-    homepage: https://github.com/zsh-users/zsh-syntax-highlighting
-    brew:
-      formula: zsh-syntax-highlighting
-    install: ""
-    uninstall: "brew uninstall zsh-syntax-highlighting || true"
-    check_version_cmd: "zsh -ic 'echo $ZSH_VERSION && echo syntax-ok'"
-    update_cmd: "brew upgrade zsh-syntax-highlighting || true"
-    env: []
-    aliases: []
-    paths: []
-
-  - name: fzf-tab
-    section: zsh
-    type: cli
-    description: autocomplete via fzf
-    homepage: https://github.com/Aloxaf/fzf-tab
-    brew: {}
-    install: |
-      mkdir -p "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins"
-      [ -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" ] || \
-        git clone https://github.com/Aloxaf/fzf-tab "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab"
-    uninstall: |
-      rm -rf "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab"
-    check_version_cmd: 'test -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" && echo fzf-tab'
-    update_cmd: 'git -C "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" pull || true'
-    env: []
-    aliases: []
-    paths: []
-
-  # ===================== CLI / PRODUTIVIDADE =====================
   - name: fzf
     section: cli
     type: cli
@@ -101,6 +86,8 @@ tools:
     uninstall: "brew uninstall fzf || true"
     check_version_cmd: "fzf --version | head -n1"
     update_cmd: "brew upgrade fzf || true"
+    deprecated: false
+    cleanup: [ "~/.fzf*", "~/.cache/fzf" ]
     env:
       - 'if command -v fd >/dev/null 2>&1; then export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git"; export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"; elif command -v rg >/dev/null 2>&1; then export FZF_DEFAULT_COMMAND="rg --files --hidden --follow -g !.git"; export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"; fi'
     aliases: []
@@ -117,6 +104,8 @@ tools:
     uninstall: "brew uninstall zoxide || true"
     check_version_cmd: "zoxide --version | head -n1"
     update_cmd: "brew upgrade zoxide || true"
+    deprecated: false
+    cleanup: []
     env: [ 'eval "$(zoxide init zsh)"' ]
     aliases:
       - 'alias z="zoxide query -l | fzf | xargs -I{} cd \"{}\""' 
@@ -133,6 +122,8 @@ tools:
     uninstall: "brew uninstall eza || true"
     check_version_cmd: "eza --version | head -n1"
     update_cmd: "brew upgrade eza || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases:
       - 'alias ls="eza -G"'
@@ -152,10 +143,11 @@ tools:
     uninstall: "brew uninstall bat || true"
     check_version_cmd: "bat --version"
     update_cmd: "brew upgrade bat || true"
+    deprecated: false
+    cleanup: []
     env:
       - "export MANPAGER='sh -c \"col -bx | bat -l man -p\"'"
-    aliases:
-      - 'alias cat="bat -p"'
+    aliases: [ 'alias cat="bat -p"' ]
     paths: []
 
   - name: ripgrep
@@ -169,6 +161,8 @@ tools:
     uninstall: "brew uninstall ripgrep || true"
     check_version_cmd: "rg --version | head -n1"
     update_cmd: "brew upgrade ripgrep || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: [ 'alias grep="rg"' ]
     paths: []
@@ -184,6 +178,8 @@ tools:
     uninstall: "brew uninstall fd || true"
     check_version_cmd: "fd --version | head -n1"
     update_cmd: "brew upgrade fd || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: []
     paths: []
@@ -199,6 +195,8 @@ tools:
     uninstall: "brew uninstall direnv || true"
     check_version_cmd: "direnv --version"
     update_cmd: "brew upgrade direnv || true"
+    deprecated: false
+    cleanup: []
     env: [ 'eval "$(direnv hook zsh)"' ]
     aliases: []
     paths: []
@@ -214,6 +212,8 @@ tools:
     uninstall: "brew uninstall thefuck || true"
     check_version_cmd: "thefuck --version | head -n1"
     update_cmd: "brew upgrade thefuck || true"
+    deprecated: false
+    cleanup: []
     env: [ 'eval "$(thefuck --alias)"' ]
     aliases: []
     paths: []
@@ -229,6 +229,8 @@ tools:
     uninstall: "brew uninstall httpie || true"
     check_version_cmd: "http --version | head -n1"
     update_cmd: "brew upgrade httpie || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: [ 'alias http="httpie"' ]
     paths: []
@@ -244,6 +246,8 @@ tools:
     uninstall: "brew uninstall jq || true"
     check_version_cmd: "jq --version"
     update_cmd: "brew upgrade jq || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: [ 'alias jqc="jq -C . | less -R"' ]
     paths: []
@@ -259,6 +263,8 @@ tools:
     uninstall: "brew uninstall gh || true"
     check_version_cmd: "gh --version | head -n1"
     update_cmd: "brew upgrade gh || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: [ 'alias ghl="gh auth login"' ]
     paths: []
@@ -274,9 +280,12 @@ tools:
     uninstall: "brew uninstall ghq || true"
     check_version_cmd: "ghq --version | head -n1"
     update_cmd: "brew upgrade ghq || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases:
-      - 'alias ghqget='\''gh repo list --limit 100 | fzf | awk "{print $1}" | xargs -I{} ghq get {}'\'''
+      - |
+        alias ghqget="gh repo list --limit 100 | fzf | awk '{print \$1}' | xargs -I{} ghq get {}"
     paths: []
 
   - name: asciinema
@@ -290,6 +299,8 @@ tools:
     uninstall: "brew uninstall asciinema || true"
     check_version_cmd: "asciinema --version"
     update_cmd: "brew upgrade asciinema || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: []
     paths: []
@@ -305,6 +316,8 @@ tools:
     uninstall: "brew uninstall htop || true"
     check_version_cmd: "htop --version | head -n1"
     update_cmd: "brew upgrade htop || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: []
     paths: []
@@ -320,12 +333,14 @@ tools:
     uninstall: "brew uninstall btop || true"
     check_version_cmd: "btop --version | head -n1"
     update_cmd: "brew upgrade btop || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: [ 'alias top="btop"' ]
     paths: []
 
   - name: mtr
-    section: net
+    section: cli
     type: cli
     description: ping + traceroute
     homepage: https://www.bitwizard.nl/mtr/
@@ -335,12 +350,14 @@ tools:
     uninstall: "brew uninstall mtr || true"
     check_version_cmd: "mtr --version | head -n1"
     update_cmd: "brew upgrade mtr || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: [ 'alias nettr="sudo mtr -c 50 1.1.1.1"' ]
     paths: []
 
   - name: iperf3
-    section: net
+    section: cli
     type: cli
     description: throughput de rede
     homepage: https://software.es.net/iperf/
@@ -350,12 +367,14 @@ tools:
     uninstall: "brew uninstall iperf3 || true"
     check_version_cmd: "iperf3 --version | head -n1"
     update_cmd: "brew upgrade iperf3 || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: []
     paths: []
 
   - name: glances
-    section: devops
+    section: cli
     type: cli
     description: monitor multiplataforma
     homepage: https://nicolargo.github.io/glances/
@@ -365,12 +384,14 @@ tools:
     uninstall: "brew uninstall glances || true"
     check_version_cmd: "glances --version | head -n1"
     update_cmd: "brew upgrade glances || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: [ 'alias gl="glances"' ]
     paths: []
 
   - name: fastfetch
-    section: ux
+    section: cli
     type: cli
     description: resumo do sistema (moderno)
     homepage: https://github.com/fastfetch-cli/fastfetch
@@ -380,12 +401,14 @@ tools:
     uninstall: "brew uninstall fastfetch || true"
     check_version_cmd: "fastfetch --version | head -n1"
     update_cmd: "brew upgrade fastfetch || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: [ 'alias fetch="fastfetch || neofetch"' ]
     paths: []
 
   - name: neofetch
-    section: ux
+    section: cli
     type: cli
     description: resumo do sistema (clássico)
     homepage: https://github.com/dylanaraps/neofetch
@@ -395,6 +418,8 @@ tools:
     uninstall: "brew uninstall neofetch || true"
     check_version_cmd: "neofetch --version 2>/dev/null || echo neofetch"
     update_cmd: "brew upgrade neofetch || true"
+    deprecated: false
+    cleanup: []
     env: []
     aliases: []
     paths: []
@@ -410,6 +435,62 @@ tools:
     uninstall: "brew uninstall starship || true"
     check_version_cmd: "starship --version | head -n1"
     update_cmd: "brew upgrade starship || true"
+    deprecated: false
+    cleanup: []
     env: [ '# eval "$(starship init zsh)"' ]
+    aliases: []
+    paths: []
+
+  - name: zsh-autosuggestions
+    section: zsh
+    type: cli
+    description: sugestões no zsh
+    homepage: https://github.com/zsh-users/zsh-autosuggestions
+    brew:
+      formula: zsh-autosuggestions
+    install: ""
+    uninstall: "brew uninstall zsh-autosuggestions || true"
+    check_version_cmd: "zsh -ic 'echo $ZSH_VERSION && echo autosuggestions-ok'"
+    update_cmd: "brew upgrade zsh-autosuggestions || true"
+    deprecated: false
+    cleanup: []
+    env: []
+    aliases: []
+    paths: []
+
+  - name: zsh-syntax-highlighting
+    section: zsh
+    type: cli
+    description: highlight de sintaxe
+    homepage: https://github.com/zsh-users/zsh-syntax-highlighting
+    brew:
+      formula: zsh-syntax-highlighting
+    install: ""
+    uninstall: "brew uninstall zsh-syntax-highlighting || true"
+    check_version_cmd: "zsh -ic 'echo $ZSH_VERSION && echo syntax-ok'"
+    update_cmd: "brew upgrade zsh-syntax-highlighting || true"
+    deprecated: false
+    cleanup: []
+    env: []
+    aliases: []
+    paths: []
+
+  - name: fzf-tab
+    section: zsh
+    type: cli
+    description: autocomplete via fzf
+    homepage: https://github.com/Aloxaf/fzf-tab
+    brew: {}
+    install: |
+      mkdir -p "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins"
+      [ -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" ] || \
+        git clone https://github.com/Aloxaf/fzf-tab "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab"
+    uninstall: |
+      rm -rf "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab"
+    check_version_cmd: 'test -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" && echo fzf-tab'
+    update_cmd: 'git -C "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fzf-tab" pull || true'
+    deprecated: false
+    cleanup: []
+    env: []
     aliases: []
     paths: []

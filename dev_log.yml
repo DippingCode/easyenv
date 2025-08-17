@@ -1,4 +1,69 @@
 tasks:
+  - name: "Tools list — correção de detecção de versões + debug por item"
+    date: "2025-08-17T18:55:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "21"
+    task: "Tornar detecção de versões robusta (installed/latest) e incluir modo --debug por ferramenta"
+    commit: "fix(cli/tools): tolerar falhas de check_version_cmd com pipefail; melhorar brew info fallback; debug por item"
+    files_updated:
+      - path: "src/presenter/cli/tools.sh"
+        type: "bash"
+    summary:
+      - `check_version_cmd` não derruba mais a pipeline; fallback para fórmula/cask.
+      - “latest” via `brew info --json` com fallback textual confiável.
+      - `--debug` mostra formula/cask/check de cada tool durante o list/detailed.
+    notes:
+      - Com `jq` presente, a leitura de `brew info --json` é preferida.
+    next_steps:
+      - Adicionar coluna “Status” (OK/Outdated/Missing) e flags de filtro (`--only`, `--type`).
+      
+  - name: "Tools list com sync de versões"
+    date: "2025-08-17T18:46:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "20"
+    task: "Aprimorar tools list para detectar e sincronizar versões instaladas e mais recentes"
+    commit: "feat(cli/tools): detectar installed/latest mesmo sem check_version_cmd; sync .version_installed/.version_latest em config/tools.yml; robustez sem Homebrew/JQ"
+    files_updated:
+      - path: "src/presenter/cli/tools.sh"
+        type: "bash"
+    summary:
+      - `list` agora calcula `installed` e `latest` de forma dinâmica e grava no catálogo.
+      - `--detailed` e `--json` estáveis; `--debug` exibe resolução de paths e dependências.
+      - Execução segura com `set -euo pipefail`, sem abortar quando não há Homebrew.
+    notes:
+      - Com `jq` instalado, a versão “latest” de fórmulas/casks fica mais precisa (via `brew info --json`).
+    next_steps:
+      - Exibir uma coluna “Status” (OK/Outdated/Not installed) e filtros `--only`/`--type`/`--section`.
+
+  - name: "Fix tools discovery + seed inicial"
+    date: "2025-08-17T18:16:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "19"
+    task: "Corrigir leitura do catálogo e entregar seed funcional de ferramentas"
+    commit: "fix(tools): corrigir YAML malformado e refazer cli/tools.sh; adicionar catálogo padrão"
+    files_updated:
+      - path: "src/presenter/cli/tools.sh"
+        type: "bash"
+    files_created:
+      - path: "config/tools.yml"
+        type: "yaml"
+    summary:
+      - Removido marcador `...` inválido do YAML; `.tools` agora é lido corretamente pelo yq.
+      - Reescrito `tools.sh` (list/install/update/uninstall) com tratamento de erros e dependências.
+      - Catálogo inicial inclui oh-my-zsh, powerlevel10k, yq, fzf, zoxide, e utilitários populares.
+    notes:
+      - `yq` é requisito; o comando valida presença e dá mensagem amigável.
+      - O caminho do catálogo resolve via `EASYENV_HOME/config/tools.yml` por padrão.
+    next_steps:
+      - Conectar `tools install` com injeção de env/aliases/paths no `.zshrc` a partir do catálogo.
+      - Adicionar `tools doctor` para verificação rápida de versões/health.
+
   - name: “Ferramentas: update & uninstall (catálogo)”
     date: “2025-08-17T16:45:00-03:00”
     author: “easyenv-assistant”

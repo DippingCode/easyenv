@@ -36,6 +36,8 @@ tools:
     interactive_config: false
     config_cmd: ""
     config_notes: ""
+    instaled_version: ""
+    latest_version: ""
 
   - name: powerlevel10k
     section: zsh

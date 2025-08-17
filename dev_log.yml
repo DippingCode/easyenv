@@ -1,4 +1,63 @@
 tasks:
+  - name: "Datasource: buscar tool por nome"
+    date: "2025-08-17T19:10:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "24"
+    task: "Adicionar tools_ds_get_tool_by_name ao tools_datasource.sh"
+    commit: "feat(data/datasource): tools_ds_get_tool_by_name retorna entidade JSON por nome"
+    files_updated:
+      - path: "src/data/datasources/tools_datasource.sh"
+        type: "bash"
+    summary:
+      - Retorna um único objeto JSON correspondente a `.tools[] | select(.name == $n)`.
+      - Em caso de não encontrado, arquivo ausente ou yq indisponível → `{}`.
+    notes:
+      - Comparação é exata e sensível a maiúsculas/minúsculas (mantido simples por enquanto).
+    next_steps:
+      - Implementar `tools_ds_update_tool` (atualizar uma tool no catálogo).
+
+  - name: "Datasource: listar ferramentas (read-only)"
+    date: "2025-08-17T19:00:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "23"
+    task: "Adicionar tools_ds_get_tools ao tools_datasource.sh (retorno JSON de tool_entity)"
+    commit: "feat(data/datasource): tools_ds_get_tools retorna JSON de config/tools.yml"
+    files_updated:
+      - path: "src/data/datasources/tools_datasource.sh"
+        type: "bash"
+    summary:
+      - Método lê `config/tools.yml` (ou `EASYENV_TOOLS_YML`) e retorna `[].tools` como JSON.
+      - Resolutor de caminho robusto: `EASYENV_TOOLS_YML` → `EASYENV_HOME/config/tools.yml` → `config/tools.yml`.
+      - Falta de `yq` ou arquivo ausente retorna `[]` sem quebrar UX.
+    notes:
+      - A entidade será tratada como JSON pelas camadas `domain/presenter` até termos o parser da `tool_entity`.
+    next_steps:
+      - Implementar `tools_ds_get_tool_by_name` (retorna 1 item JSON).
+
+  - name: "tools list: versões instaladas e latest + sync no YAML"
+    date: "2025-08-17T18:55:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "22"
+    task: "Detectar versões (instalada/latest) a partir do ambiente e sincronizar no config/tools.yml"
+    commit: "fix(cli/tools): detectar versões via check/binário/brew; atualizar version_installed/version_latest; melhorar list"
+    files_updated:
+      - path: "src/presenter/cli/tools.sh"
+        type: "bash"
+    summary:
+      - Ordem de detecção: `check_version_cmd` → binário (`--version`/`-v`) → `brew list`.
+      - “latest” por `brew info --json=v2` com fallback textual.
+      - Sincroniza `version_installed`/`version_latest` no `config/tools.yml`.
+    notes:
+      - Para ferramentas sem binário e sem brew (ex.: frameworks), a versão pode permanecer “-”.
+    next_steps:
+      - Exibir status por item (OK/Outdated/Missing) e filtros (`--only`, `--type`).
+
   - name: "Tools list — correção de detecção de versões + debug por item"
     date: "2025-08-17T18:55:00-03:00"
     author: "easyenv-assistant"
@@ -18,7 +77,7 @@ tasks:
       - Com `jq` presente, a leitura de `brew info --json` é preferida.
     next_steps:
       - Adicionar coluna “Status” (OK/Outdated/Missing) e flags de filtro (`--only`, `--type`).
-      
+
   - name: "Tools list com sync de versões"
     date: "2025-08-17T18:46:00-03:00"
     author: "easyenv-assistant"

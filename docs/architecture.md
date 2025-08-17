@@ -150,7 +150,7 @@ easyenv/
 │	
 ├── .gitignore
 ├── LICENSE
-└── README.md						#deve incluir uma seção chamada release version, que será onde a ferramenta consulta a versão
+└── README.md						
 
 regras de dependência (DDD)
 	•	presenter → pode depender de domain (usecases) e presenter/templates/viewmodels.

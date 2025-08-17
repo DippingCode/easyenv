@@ -1,9 +1,188 @@
 tasks:
+  - name: "Core mínimo + logging centralizado"
+    date: "2025-08-17T15:16:35-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "05"
+    task: "Criar utils/logging/guards e centralizar logging no router"
+    commit: "feat(core): add utils/logging/guards; refactor(router): centralizar logging por comando; feat(cli): add help básico"
+    files_created:
+      - path: "src/presenter/cli/help.sh"
+        type: "bash"
+      - path: "src/core/utils.sh"
+        type: "bash"
+      - path: "src/core/logging.sh"
+        type: "bash"
+      - path: "src/core/guards.sh"
+        type: "bash"
+    files_updated:
+      - path: "src/core/router.sh"
+        type: "bash"
+    summary:
+      - Adicionado `core/utils.sh` com helpers (cores, confirm, humanize, etc.).
+      - Adicionado `core/logging.sh` com logs correlacionados (GUID) em `var/logs/user.log` e `var/logs/debug.log`.
+      - Adicionado `core/guards.sh` com `require_cmd` e checagens básicas.
+      - `router.sh` ajustado para **logar em um ponto único** todas as execuções de comandos.
+      - Criado `presenter/cli/help.sh` (help básico) para o bootstrap do CLI.
+    notes:
+      - O GUID de cada execução é compartilhado entre user/debug logs para correlação.
+      - `debug.log` inclui a saída completa do comando; `user.log` registra evento resumido.
+      - Pastas `var/logs` são criadas on-demand; mantidas fora do git (via `.gitignore`).
+    next_steps:
+      - Implementar `presenter/cli/version.sh` lendo `dev-log.yml` e suportando `--detailed`.
+      - Criar `presenter/cli/push.sh` (commit/tag/push com base na última entrada do dev-log).
+      - Implementar `presenter/cli/status.sh` mínimo (sem integração de plugins).
+      - Esqueleto de `data/services/i18n_service.sh` e estrutura `presenter/environment/i18n`.
+
+  - name: "Versão detalhada e dev-log newest-first"
+    date: "2025-08-17T16:40:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "07"
+    task: "Ajustar push p/ tasks[0] e adicionar easyenv version --detailed"
+    commit: "feat(version): detalhado via dev-log (tasks[0]); push agora incrementa build da primeira entrada"
+    files_updated:
+      - path: "src/presenter/cli/push.sh"
+        type: "bash"
+    files_created:
+      - path: "src/presenter/cli/version.sh"
+        type: "bash"
+    summary:
+      - Dev-log agora considerado newest-first (primeira entrada = corrente).
+      - `easyenv version --detailed` imprime dados completos da build (summary, notes, next_steps).
+      - `push` incrementa `build` em `tasks[0]` e atualiza `date` automaticamente.
+    notes:
+      - Para uso rápido de `version` (sem --detailed) lê-se apenas as primeiras linhas (configurável via DEVLOG_HEAD_LINES).
+      - Para detalhes, yq lê o arquivo inteiro (necessário para arrays grandes).
+    next_steps:
+      - Implementar `core/utils.sh`, `core/logging.sh`, `core/guards.sh` mínimos (se ainda não existem).
+      - Router deve mapear `-v/--version` → `version`.
+
+  - name: "Bootstrap push/main/config/install"
+    date: "2025-08-17T15:05:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "06"
+    task: "Criar cmd_push, main.sh, core/config.sh e bin/install.sh"
+    commit: "feat(core): adicionar push, main, config e instalador local"
+    files_created:
+      - path: "src/presenter/cli/push.sh"
+        type: "bash"
+      - path: "src/main.sh"
+        type: "bash"
+      - path: "src/core/config.sh"
+        type: "bash"
+      - path: "bin/install.sh"
+        type: "bash"
+    summary:
+      - `push`: usa dev-log para commit/tag; incrementa `build` automaticamente; push + push --tags.
+      - `main.sh`: ponto de entrada mínimo, carrega `core/*` e despacha via router.
+      - `core/config.sh`: variáveis e paths globais; criação de diretórios em `var/`.
+      - `install.sh`: bootstrap local (clone/atualiza repo, cria shim em ~/.local/bin).
+    notes:
+      - Router deve ter case para `push` (executar `cmd_push`).
+      - Requer `yq` para manipular dev-log; sem `yq` o push não roda.
+    next_steps:
+      - Adicionar `core/utils.sh`, `core/logging.sh`, `core/guards.sh` mínimos.
+      - Migrar `help`, `version`, `status` para `presenter/cli/`.
+
+  - name: "Versão lê build do dev-log"
+    date: "2025-08-17T14:25:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "05"
+    task: "Atualizar cmd_version para considerar campo build do dev-log"
+    commit: "feat(version): exibir build do dev-log em easyenv -v"
+    files_updated:
+      - path: "src/presenter/cli/version.sh"
+        type: "bash"
+    summary:
+      - `easyenv -v` agora mostra `vX.Y.Z (build NN)` quando `build` existir no dev-log.
+      - Fallbacks: README (Release version) e variáveis `EASYENV_VERSION`/`EASYENV_BUILD`.
+    notes:
+      - Requer `yq` para leitura do dev-log; sem `yq`, cai nos fallbacks.
+    next_steps:
+      - Integrar `cmd_push` para incrementar `build` automaticamente ao commitar e taggear.
+
+  - name: "Router de comandos"
+    date: "2025-08-17T13:20:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "04"
+    task: "Criar core/router.sh para despachar subcomandos"
+    commit: "feat(router): adicionar roteador de subcomandos dinâmico (presenter/cli)"
+    files_created:
+      - path: "src/core/router.sh"
+        type: "bash"
+    summary:
+      - Despacho dinâmico: carrega `src/presenter/cli/<cmd>.sh` e executa `cmd_<cmd>`.
+      - Aliases suportados: -h/--help, -v/--version, upgrade→update, diag→doctor, etc.
+      - Mensagens de uso e listagem automática de comandos com base nos arquivos do diretório.
+    notes:
+      - O `main.sh` deve chamar `router_dispatch "$@"` após carregar `core/*`.
+      - O `cmd_push` já está coberto pelo case `push`.
+    next_steps:
+      - Adicionar `src/main.sh` mínimo e `core/{config,utils,logging,guards}.sh`.
+      - Migrar os comandos existentes para `src/presenter/cli/*.sh`.
+  
+  - name: "Comando push (commit + tag + push via dev-log)"
+    date: "2025-08-17T12:00:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "03"
+    task: "Criar comando easyenv push"
+    commit: "feat(push): adicionar comando para commit/tag/push baseado no dev-log"
+    files_created:
+      - path: "src/presenter/cli/push.sh"
+        type: "bash"
+    files_updated:
+      - path: "dev_log.yml"
+        type: "yaml"
+    summary:
+      - Lê último item do dev-log para montar commit e identificar versão.
+      - Adiciona todos os arquivos, cria commit (se houver mudanças).
+      - Compara versão do dev-log com última tag; se diferente e não existir, cria tag anotada.
+      - Executa git push do branch atual e push das tags.
+    notes:
+      - Suporta `--dry-run`, `--no-tag`, `--remote`, `--branch`.
+      - Procura dev-log nos arquivos: dev_log.yml, dev-log.yml, dev-log.yaml, dev_log.yaml.
+      - Requer `yq` para parse; se ausente, cai em commit padrão.
+    next_steps:
+      - Atualizar `core/router.sh` para rotear `push` → `cmd_push`.
+      - (Opcional) Sincronizar ‘Release version’ do README com a versão do dev-log.
+  
+  - name: "Padronização do .gitignore (runtime e lixos)"
+    date: "2025-08-17T00:00:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "02"
+    task: "Atualizar .gitignore para ignorar var/ e backups/ (runtime), além de artefatos de SO/editores."
+    commit: "chore(gitignore): ignorar var/ e backups/ + lixos comuns (macOS, IDEs, caches zsh)"
+    files_updated:
+      - path: ".gitignore"
+        type: "config"
+    files_created: []
+    summary:
+      - Evita versionar diretórios de runtime (`/var`, `/backups`) e arquivos temporários.
+      - Inclui regras para macOS (.DS_Store), IDEs (.vscode/, .idea/), caches do zsh (.zcompdump*).
+    notes:
+      - Caso precise versionar algo em /var no futuro, usar exceção com prefixo `!`.
+    next_steps:
+      - Iniciar 0.0.1: scaffolding DDD — criar `src/main.sh`, `src/core/{config.sh,utils.sh,logging.sh,router.sh,guards.sh}` e `src/presenter/cli/{help.sh,version.sh,status.sh}`.
+
   - name: "Criação dos novos arquivos"
     date: "2025-08-16T12:00:00-03:00"
     author: "easyenv-assistant"
     version_scope: "0.0.1..0.0.7 (bootstrap do changelog)"
     version: "0.0.1"
+    build: "01"
     task: "Criar arquivo de changelog inicial"
     commit: "texto para adicionar ao commit"
     files_updated:
@@ -20,22 +199,3 @@ tasks:
       - Datas das versões estão como placeholders (YYYY-MM-DD) para preencher no release real.
     next_steps:
       - Iniciar 0.0.1: criar `src/main.sh`, `core/router.sh`, `core/{config,utils,logging,guards}.sh` e `presenter/cli/{help,version,status}.sh` (básico).
-      
-  - name: "Padronização do .gitignore (runtime e lixos)"
-    date: "2025-08-17T00:00:00-03:00"
-    author: "easyenv-assistant"
-    version_scope: "0.0.1"
-    version: "0.0.1"
-    task: "Atualizar .gitignore para ignorar var/ e backups/ (runtime), além de artefatos de SO/editores."
-    commit: "chore(gitignore): ignorar var/ e backups/ + lixos comuns (macOS, IDEs, caches zsh)"
-    files_updated:
-      - path: ".gitignore"
-        type: "config"
-    files_created: []
-    summary:
-      - Evita versionar diretórios de runtime (`/var`, `/backups`) e arquivos temporários.
-      - Inclui regras para macOS (.DS_Store), IDEs (.vscode/, .idea/), caches do zsh (.zcompdump*).
-    notes:
-      - Caso precise versionar algo em /var no futuro, usar exceção com prefixo `!`.
-    next_steps:
-      - Iniciar 0.0.1: scaffolding DDD — criar `src/main.sh`, `src/core/{config.sh,utils.sh,logging.sh,router.sh,guards.sh}` e `src/presenter/cli/{help.sh,version.sh,status.sh}`.

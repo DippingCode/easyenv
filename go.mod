@@ -1,3 +1,5 @@
-module github.com/jhss/easyenv
+module github.com/DippingCode/easyenv/src
 
 go 1.25.0
+
+require gopkg.in/yaml.v3 v3.0.1

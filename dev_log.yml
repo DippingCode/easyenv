@@ -1,4 +1,26 @@
 tasks:
+  - name: "Installer: banner + auto-help"
+    date: "2025-08-17T16:25:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "13"
+    task: "Aprimorar bin/install.sh com banner e execução automática do help"
+    commit: "fix(install): banner de boas-vindas e execução automática do help via shim absoluto"
+    files_updated:
+      - path: "bin/install.sh"
+        type: "bash"
+    summary:
+      - Mostra banner “EasyEnv Installer” e “Welcome to EasyEnv” no pós-instalação.
+      - Executa `easyenv help` automaticamente, sem depender de PATH.
+      - Garante permissões +x em todos os `*.sh` do `src/` e no shim.
+      - Cria diretórios de runtime (`var/logs`, `var/backups`, `var/snapshot`).
+      - Atualiza `~/.zprofile` para incluir `~/.local/bin` de forma idempotente.
+    notes:
+      - Em caso de erro no auto-help, instruções claras para `source ~/.zprofile`.
+    next_steps:
+      - Adicionar banner no `help` para uma apresentação mais rica do CLI.
+
   - name: "Fix logging: quotes e compat wrappers"
     date: "2025-08-17T16:20:00-03:00"
     author: "easyenv-assistant"
@@ -18,7 +40,7 @@ tasks:
       - Router deve redirecionar stdout/stderr para `$EASYENV_LOG_STDOUT/$EASYENV_LOG_STDERR`.
     next_steps:
       - Implementar `version --detailed` lendo a primeira entrada do `docs/dev_log.yml`.
-      
+
   - name: "Fix printf no installer e harden de fluxo"
     date: "2025-08-17T16:05:00-03:00"
     author: "easyenv-assistant"

@@ -1,114 +1,109 @@
 #!/usr/bin/env bash
-# EasyEnv - core/router.sh
-# Responsável por despachar subcomandos para presenter/cli/<cmd>.sh
-# e centralizar o logging (user.log / debug.log) via logging_begin/logging_end.
+# core/router.sh — despacho de subcomandos + captura e logging centralizados
 
 set -euo pipefail
 
-# Diretórios base (assumindo que main.sh setou EASYENV_HOME antes)
+# --- dependências mínimas ---
 EASYENV_HOME="${EASYENV_HOME:-$HOME/easyenv}"
-CLI_DIR="$EASYENV_HOME/src/presenter/cli"
+PRESENTER_DIR="$EASYENV_HOME/src/presenter/cli"
 
-# ---- Helpers de listagem/uso ----
-router_list_commands() {
-  # Lista nomes base (sem extensão) dos arquivos *.sh em presenter/cli
-  if [[ -d "$CLI_DIR" ]]; then
-    find "$CLI_DIR" -maxdepth 1 -type f -name "*.sh" -print \
-      | sed 's#.*/##' | sed 's#\.sh$##' | sort
+# temp/log files (sempre inicializados p/ evitar erros com set -u)
+: "${TMPDIR:="/tmp"}"
+EASYENV_TMP_DIR="${EASYENV_TMP_DIR:-$TMPDIR/easyenv.$USER}"
+mkdir -p "$EASYENV_TMP_DIR"
+EASYENV_LOG_STDOUT="${EASYENV_LOG_STDOUT:-"$(mktemp "$EASYENV_TMP_DIR/easyenv.out.XXXXXX")"}"
+EASYENV_LOG_STDERR="${EASYENV_LOG_STDERR:-"$(mktemp "$EASYENV_TMP_DIR/easyenv.err.XXXXXX")"}"
+export EASYENV_LOG_STDOUT EASYENV_LOG_STDERR
+
+# helpers locais
+_router_list_commands() {
+  if [[ -d "$PRESENTER_DIR" ]]; then
+    (
+      cd "$PRESENTER_DIR"
+      for f in *.sh; do
+        [[ "$f" == "*.sh" ]] && continue
+        printf "%s\n" "${f%.sh}"
+      done | sort -u
+    )
   fi
 }
 
-router_print_unknown() {
-  local cmd="$1"
-  echo "Comando desconhecido: $cmd"
-  echo
-  echo "Comandos disponíveis:"
-  router_list_commands | sed 's/^/  - /'
-  echo
-  echo "Use: easyenv help"
+router_usage() {
+  cat <<'EOF'
+Uso:
+  easyenv <comando> [opções]
+
+Atalhos:
+  -h, --help      → help
+  -v, --version   → version
+  upgrade         → update
+  diag            → doctor
+
+Comandos disponíveis:
+EOF
+  while IFS= read -r c; do
+    printf "  - %s\n" "$c"
+  done < <(_router_list_commands)
 }
 
-# Normaliza o nome da função (cmd_<nome>) aceitando hífens no arquivo/CLI
-# ex.: "doctor" -> "cmd_doctor", "react-native" -> "cmd_react_native"
-__router_fn_name() {
-  local raw="$1"
-  raw="${raw//-/_}"
-  printf "cmd_%s" "$raw"
-}
-
-# ---- Aliases de comandos (ergonomia) ----
-__router_resolve_alias() {
-  local c="$1"
-  case "$c" in
-    ""|"help"|"-h"|"--help") echo "help" ;;
-    "-v"|"--version"|"version") echo "version" ;;
-    "upgrade") echo "update" ;;
-    "diag"|"doctor") echo "doctor" ;;
-    "ls"|"list") echo "help" ;;     # por ora, "list" cai no help
-    *) echo "$c" ;;
-  esac
-}
-
-# ---- Dispatcher com logging centralizado ----
+# despacho
 router_dispatch() {
-  # Dependências mínimas do core (esperado que main.sh já tenha source em config/utils/logging)
-  if ! declare -F logging_begin >/dev/null 2>&1; then
-    echo "logging_begin não encontrado. Certifique-se de carregar core/logging.sh antes do router." >&2
-    exit 1
-  fi
-  if ! declare -F logging_end >/dev/null 2>&1; then
-    echo "logging_end não encontrado. Certifique-se de carregar core/logging.sh antes do router." >&2
-    exit 1
-  fi
+  local cmd="${1:-help}"
+  shift || true
 
-  local cmd="${1:-}"; shift || true
-  cmd="$(__router_resolve_alias "$cmd")"
+  # aliases
+  case "$cmd" in
+    -h|--help) cmd="help" ;;
+    -v|--version) cmd="version" ;;
+    upgrade) cmd="update" ;;
+    diag) cmd="doctor" ;;
+  esac
 
-  # Default para help se vazio
-  [[ -z "$cmd" ]] && cmd="help"
-
-  # Arquivo do comando
-  local cli_file="$CLI_DIR/${cmd}.sh"
-
-  # Pré-carrega help mínimo se help não existir
-  if [[ ! -f "$cli_file" && "$cmd" != "help" ]]; then
-    # tentar ainda carregar help para fallback
-    [[ -f "$CLI_DIR/help.sh" ]] && source "$CLI_DIR/help.sh"
+  # logging begin (NÃO imprime nada)
+  local REQ_ID=""
+  if declare -F logging_begin >/dev/null 2>&1; then
+    REQ_ID="$(logging_begin "$cmd" "$@")"
   fi
 
-  # Carrega arquivo do comando, se existir
-  if [[ -f "$cli_file" ]]; then
-    # shellcheck source=/dev/null
-    source "$cli_file"
-  fi
+  # garante arquivos de captura
+  : > "$EASYENV_LOG_STDOUT"
+  : > "$EASYENV_LOG_STDERR"
 
-  # Nome da função esperada
-  local fn; fn="$(__router_fn_name "$cmd")"
-
-  # Inicia logging (gera GUID, timestamps, arquivos de captura)
-  logging_begin "$cmd" "$@"
-
-  local rc=0
-
-  if declare -F "$fn" >/dev/null 2>&1; then
-    # Execução com captura e exibição simultânea:
-    # - stdout vai para TTY e também para EASYENV_LOG_STDOUT
-    # - stderr vai para TTY e também para EASYENV_LOG_STDERR
+  # carga do comando
+  local script="$PRESENTER_DIR/$cmd.sh"
+  if [[ ! -f "$script" ]]; then
     {
-      "$fn" "$@"
-    } > >(tee -a "${EASYENV_LOG_STDOUT:?}") \
-      2> >(tee -a "${EASYENV_LOG_STDERR:?}" >&2) || rc=$?
-  else
-    # Função não encontrada: mensagem amigável e status 1
-    {
-      router_print_unknown "$cmd"
-    } > >(tee -a "${EASYENV_LOG_STDOUT:?}") \
-      2> >(tee -a "${EASYENV_LOG_STDERR:?}" >&2)
-    rc=1
+      echo "Comando desconhecido: $cmd"
+      router_usage
+    } 2>"$EASYENV_LOG_STDERR" | tee -a "$EASYENV_LOG_STDOUT"
+    local ec=1
+    if declare -F logging_end >/dev/null 2>&1; then
+      logging_end "$REQ_ID" "$cmd" "$ec" "$EASYENV_LOG_STDOUT" "$EASYENV_LOG_STDERR" "$*"
+    fi
+    return "$ec"
   fi
 
-  # Finaliza logging com código de saída
-  logging_end "$rc"
+  # executa o comando capturando stdout/stderr
+  # shellcheck source=/dev/null
+  {
+    source "$script"
+    "cmd_${cmd}" "$@"
+  } >"$EASYENV_LOG_STDOUT" 2>"$EASYENV_LOG_STDERR"
+  local ec=$?
 
-  return "$rc"
+  # encaminha saída ao usuário
+  cat "$EASYENV_LOG_STDOUT"
+  if (( ec != 0 )); then
+    # em erro, também mostra stderr para facilitar diagnóstico
+    if [[ -s "$EASYENV_LOG_STDERR" ]]; then
+      printf "\n" 1>&2
+      cat "$EASYENV_LOG_STDERR" 1>&2
+    fi
+  fi
+
+  # logging end
+  if declare -F logging_end >/dev/null 2>&1; then
+    logging_end "$REQ_ID" "$cmd" "$ec" "$EASYENV_LOG_STDOUT" "$EASYENV_LOG_STDERR" "$*"
+  fi
+  return "$ec"
 }

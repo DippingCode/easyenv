@@ -1,99 +1,74 @@
 #!/usr/bin/env bash
-# EasyEnv - Installer (1-liner friendly)
-# curl -fsSL https://raw.githubusercontent.com/DippingCode/easyenv/main/bin/install.sh | /bin/bash
-
 set -euo pipefail
 
-# --------- UI helpers ----------
-hr() { printf '%*s\n' "${1:-37}" '' | tr ' ' '='; }
-banner_install() {
-  hr 37
-  printf "          EasyEnv Installer\n"
-  hr 37
-  printf "\n"
-}
-banner_welcome() {
-  printf "\n"
-  printf "=====================================\n"
-  printf "            Welcome to EasyEnv       \n"
-  printf "=====================================\n"
-  printf "\n"
+REPO_URL="https://github.com/DippingCode/easyenv.git"
+INSTALL_DIR="${EASYENV_HOME:-$HOME/easyenv}"
+SHIM_DIR="$HOME/.local/bin"
+SHIM_PATH="$SHIM_DIR/easyenv"
+
+banner() {
+  cat <<'B'
+=====================================
+          EasyEnv Installer
+=====================================
+B
 }
 
-# --------- Paths ----------
-REPO_URL="${REPO_URL:-https://github.com/DippingCode/easyenv.git}"
-TARGET_DIR="${EASYENV_HOME:-$HOME/easyenv}"
-BIN_DIR="$HOME/.local/bin"
-SHIM="$BIN_DIR/easyenv"
+main() {
+  banner
+  printf "\n>> Instalando easyenv em: %s\n" "$INSTALL_DIR"
 
-# --------- Idempotent append ----------
-append_once() {
-  # append_once <file> <marker_line> <block>
-  local file="$1" marker="$2" block="$3"
-  mkdir -p "$(dirname "$file")"
-  touch "$file"
-  if ! grep -qF "$marker" "$file"; then
-    {
-      printf "\n%s\n" "$marker"
-      printf "%s\n" "$block"
-    } >> "$file"
+  if [[ -d "$INSTALL_DIR/.git" ]]; then
+    echo "-> Atualizando repositório…"
+    git -C "$INSTALL_DIR" pull --ff-only
+  else
+    echo "-> Clonando repositório…"
+    rm -rf "$INSTALL_DIR"
+    git clone "$REPO_URL" "$INSTALL_DIR"
   fi
-}
 
-# --------- Begin ----------
-banner_install
-printf ">> Instalando easyenv em: %s\n" "$TARGET_DIR"
-
-# Clone or update repo
-if [[ -d "$TARGET_DIR/.git" ]]; then
-  printf "-> Repositório já existe, atualizando (git pull)…\n"
-  git -C "$TARGET_DIR" pull --ff-only --quiet
-else
-  printf "-> Clonando repositório…\n"
-  git clone --quiet "$REPO_URL" "$TARGET_DIR"
-fi
-
-# Ensure runtime dirs
-mkdir -p "$BIN_DIR"
-mkdir -p "$TARGET_DIR/src" "$TARGET_DIR/var/logs" "$TARGET_DIR/var/backups" "$TARGET_DIR/var/snapshot"
-
-# Make every *.sh under src executable
-if command -v find >/dev/null 2>&1; then
-  find "$TARGET_DIR/src" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
-fi
-
-# Create shim (~/.local/bin/easyenv)
-cat > "$SHIM" <<'SH'
+  mkdir -p "$SHIM_DIR"
+  cat > "$SHIM_PATH" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
-exec "$HOME/easyenv/src/main.sh" "$@"
+EASYENV_HOME="${EASYENV_HOME:-$HOME/easyenv}"
+exec /usr/bin/env bash "$EASYENV_HOME/src/main.sh" "$@"
 SH
-chmod +x "$SHIM"
-printf "✅ Shim criado: %s\n" "$SHIM"
+  chmod +x "$SHIM_PATH"
+  echo "✅ Shim criado: $SHIM_PATH"
 
-# Ensure ~/.zprofile adds ~/.local/bin to PATH (idempotente)
-ZP="$HOME/.zprofile"
-ZP_MARK="# >>> easyenv:PATH >>>"
-ZP_BLOCK='case ":$PATH:" in
-  *":"$HOME"/.local/bin:"*) ;;
-  *) export PATH="$HOME/.local/bin:$PATH" ;;
-esac'
-append_once "$ZP" "$ZP_MARK" "$ZP_BLOCK"
-printf "✅ PATH atualizado em ~/.zprofile (adicione ~/.local/bin).\n"
+  # Garante PATH para o shim
+  if ! grep -q "$SHIM_DIR" "$HOME/.zprofile" 2>/dev/null; then
+    {
+      echo
+      echo '# EasyEnv: add ~/.local/bin to PATH'
+      echo 'export PATH="$HOME/.local/bin:$PATH"'
+    } >> "$HOME/.zprofile"
+    echo "✅ PATH atualizado em ~/.zprofile (adicione ~/.local/bin)."
+  fi
 
-# Final message + auto help using absolute shim
-banner_welcome
-printf "✅ Instalação concluída!\n"
-printf "Abrindo ajuda automática do EasyEnv…\n\n"
+  # Tenta carregar para a sessão atual
+  if [[ ":$PATH:" != *":$SHIM_DIR:"* ]]; then
+    export PATH="$SHIM_DIR:$PATH"
+  fi
 
-# Executa help sem depender do PATH atual
-# Captura eventuais erros mas não quebra a instalação
-if ! "$SHIM" help 2>/dev/null; then
-  printf "\n⚠️  Não foi possível executar o help automaticamente.\n"
-  printf "   Abra um novo terminal ou rode:\n"
-  printf "       source \"%s\"\n" "$ZP"
-  printf "   e então:  easyenv --help\n"
-fi
+  # ==== Bootstrap de ferramentas via comando oficial ====
+  # Usa o dispatcher (gera logs e mantém a organização)
+  if command -v easyenv >/dev/null 2>&1; then
+    easyenv tools install || true
+  else
+    # Fallback muito raro: se o shim não estiver no PATH, chama serviço direto
+    /usr/bin/env bash "$INSTALL_DIR/src/data/services/tools.sh" bootstrap || true
+  fi
 
-printf "\nDica: para atualizar o PATH nesta sessão, rode:\n"
-printf "    source \"%s\"\n\n" "$ZP"
+  cat <<EOM
+
+✅ Instalação concluída!
+Abra um novo terminal ou rode:
+    source "$HOME/.zprofile" && source "$HOME/.zshrc"
+
+e então:  easyenv --help
+EOM
+}
+
+main "$@"

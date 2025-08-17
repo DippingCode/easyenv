@@ -1,123 +1,101 @@
 #!/usr/bin/env bash
-# EasyEnv - core/logging.sh
-# - user.log: JSON lines com {id, ts, cmd, args, status, exit_code, duration_ms}
-# - debug.log: bloco com stdout/stderr correlacionado pelo mesmo id
+# core/logging.sh — logs de uso (user.log) e depuração (debug.log)
 
 set -euo pipefail
 
-# ---------- Paths ----------
 EASYENV_HOME="${EASYENV_HOME:-$HOME/easyenv}"
-LOG_DIR="${EASYENV_LOG_DIR:-$EASYENV_HOME/var/logs}"
+LOG_DIR="$EASYENV_HOME/var/logs"
 USER_LOG="$LOG_DIR/user.log"
 DEBUG_LOG="$LOG_DIR/debug.log"
 
-mkdir -p "$LOG_DIR"
-
-# ---------- Helpers ----------
-__now_iso() {
-  # ISO-8601 com timezone
-  date +"%Y-%m-%dT%H:%M:%S%z"
+ensure_log_dirs() {
+  mkdir -p "$LOG_DIR"
 }
 
-__gen_uuid() {
+guid_new() {
   if command -v uuidgen >/dev/null 2>&1; then
     uuidgen
-  elif command -v python3 >/dev/null 2>&1; then
-    python3 - <<'PY'
-import uuid; print(uuid.uuid4())
-PY
+  elif command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 16
   else
-    # Fallback: pseudo-uuid estável o suficiente p/ correlação
-    local seed hex
-    seed="$(date +%s)-$$-$RANDOM-$RANDOM"
-    hex="$(printf '%s' "$seed" | shasum -a 1 2>/dev/null | awk '{print $1}')"
-    printf "%s-%s-%s-%s-%s\n" "${hex:0:8}" "${hex:8:4}" "${hex:12:4}" "${hex:16:4}" "${hex:20:12}"
+    echo "easyenv-$(date +%s%N)-$$"
   fi
 }
 
-# macOS vs GNU date: calcula duração em ms se possível
-__duration_ms_or_null() {
-  local start_ts="$1"
-  # tenta macOS first (-j -f), senão GNU date -d; se falhar, null
-  local start_epoch end_epoch
-  if start_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S%z" "$start_ts" "+%s" 2>/dev/null); then
-    :
-  elif start_epoch=$(date -d "$start_ts" +%s 2>/dev/null); then
-    :
-  else
-    echo "null"; return 0
-  fi
-  end_epoch=$(date +%s)
-  echo $(( (end_epoch - start_epoch) * 1000 ))
+now_iso() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ"
 }
 
-# ---------- Estado corrente do log (exportado p/ router) ----------
-# EASYENV_LOG_ID, EASYENV_LOG_TS, EASYENV_LOG_CMD, EASYENV_LOG_ARGS
-# EASYENV_LOG_STDOUT, EASYENV_LOG_STDERR
+__escape_json() {
+  # Escapa aspas, barras e novas linhas para JSON
+  # (sem usar printf --; tudo com formatos explícitos)
+  local s="${1:-}"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/}"
+  echo "$s"
+}
 
+# logging_begin <cmd> [args...]
+# Retorna por stdout o req_id gerado
 logging_begin() {
-  # Uso: logging_begin <cmd> [args...]
-  EASYENV_LOG_ID="$(__gen_uuid)"; export EASYENV_LOG_ID
-  EASYENV_LOG_TS="$(__now_iso)"; export EASYENV_LOG_TS
-  EASYENV_LOG_CMD="${1:-}"; shift || true
-  EASYENV_LOG_ARGS="$*"; export EASYENV_LOG_CMD EASYENV_LOG_ARGS
+  ensure_log_dirs
+  local cmd="${1:-}"; shift || true
+  local args_str="${*:-}"
+  local req_id; req_id="$(guid_new)"
+  local ts; ts="$(now_iso)"
+  export EASYENV_REQ_ID="$req_id"
 
-  # arquivos temporários para captura (o router deve redirecionar para eles)
-  EASYENV_LOG_STDOUT="/tmp/easyenv-${EASYENV_LOG_ID}.out"
-  EASYENV_LOG_STDERR="/tmp/easyenv-${EASYENV_LOG_ID}.err"
-  : > "$EASYENV_LOG_STDOUT"
-  : > "$EASYENV_LOG_STDERR"
+  # user.log: ts, id, stage, cmd, args
+  printf '%s\t%s\t%s\t%s\t%s\n' "$ts" "$req_id" "BEGIN" "$cmd" "$args_str" >> "$USER_LOG"
+
+  echo "$req_id"
 }
 
+# logging_end <req_id> <cmd> <exit_code> <stdout_file> <stderr_file> [args_str]
 logging_end() {
-  # Uso: logging_end <exit_code>
-  local code="${1:-0}"
-  local status="Success"
-  (( code != 0 )) && status="Error"
+  ensure_log_dirs
+  local req_id="${1:-}"
+  local cmd="${2:-}"
+  local exit_code="${3:-0}"
+  local out_file="${4:-}"
+  local err_file="${5:-}"
+  local args_str="${6:-}"
 
-  local dur_ms
-  dur_ms="$(__duration_ms_or_null "${EASYENV_LOG_TS:-}")"
+  local ts; ts="$(now_iso)"
+  local result="Success"
+  [[ "$exit_code" != "0" ]] && result="Error"
 
-  # user.log como JSONL
-  printf '{"id":"%s","ts":"%s","cmd":"%s","args":"%s","status":"%s","exit_code":%d,"duration_ms":%s}\n' \
-    "${EASYENV_LOG_ID:-unknown}" \
-    "${EASYENV_LOG_TS:-$(__now_iso)}" \
-    "${EASYENV_LOG_CMD:-unknown}" \
-    "$(printf '%s' "${EASYENV_LOG_ARGS:-}" | sed 's/"/\\"/g')" \
-    "$status" "$code" "$dur_ms" >> "$USER_LOG"
+  # user.log: ts, id, result, cmd, args
+  printf '%s\t%s\t%s\t%s\t%s\n' "$ts" "$req_id" "$result" "$cmd" "$args_str" >> "$USER_LOG"
 
-  # debug.log detalhado
-  {
-    printf '----- EASYENV DEBUG id=%s ts=%s cmd=%s args=%q -----\n' \
-      "${EASYENV_LOG_ID:-unknown}" \
-      "${EASYENV_LOG_TS:-$(__now_iso)}" \
-      "${EASYENV_LOG_CMD:-unknown}" \
-      "${EASYENV_LOG_ARGS:-}"
-    printf '[stdout]\n'
-    cat "${EASYENV_LOG_STDOUT:-/dev/null}" 2>/dev/null || true
-    printf '\n[stderr]\n'
-    cat "${EASYENV_LOG_STDERR:-/dev/null}" 2>/dev/null || true
-    printf '\n[exit]=%d\n' "$code"
-    printf '----- end id=%s -----\n\n' "${EASYENV_LOG_ID:-unknown}"
-  } >> "$DEBUG_LOG"
+  # Captura stdout/stderr gerados pelo router (se existirem)
+  local out="" err=""
+  if [[ -n "$out_file" && -f "$out_file" ]]; then
+    out="$(cat "$out_file")"
+  fi
+  if [[ -n "$err_file" && -f "$err_file" ]]; then
+    err="$(cat "$err_file")"
+  fi
 
-  # limpeza
-  rm -f "${EASYENV_LOG_STDOUT:-}" "${EASYENV_LOG_STDERR:-}" 2>/dev/null || true
+  # Escapa para JSON
+  local out_json err_json cmd_json args_json
+  out_json="$(__escape_json "$out")"
+  err_json="$(__escape_json "$err")"
+  cmd_json="$(__escape_json "$cmd")"
+  args_json="$(__escape_json "$args_str")"
+
+  # debug.log (uma linha JSON por execução)
+  # (sem "printf --"; formato explícito sempre)
+  printf '{\"ts\":\"%s\",\"id\":\"%s\",\"cmd\":\"%s\",\"args\":\"%s\",\"exit\":%s,\"result\":\"%s\",\"stdout\":\"%s\",\"stderr\":\"%s\"}\n' \
+    "$ts" "$req_id" "$cmd_json" "$args_json" "$exit_code" "$result" "$out_json" "$err_json" >> "$DEBUG_LOG"
 }
 
-# ---------- Wrappers de compatibilidade ----------
-# Alguns routers/legados podem chamar estes nomes:
-log_request_start() { logging_begin "$@"; }
-log_request_end()   { logging_end "${1:-0}"; }
-router_log_start()  { logging_begin "$@"; }
-router_log_end()    { logging_end "${1:-0}"; }
-begin_cmd_log()     { logging_begin "$@"; }
-end_cmd_log()       { logging_end "${1:-0}"; }
-
-# Evento simples (compat)
-# Uso: log_line <cmd> <stage> <status>
+# Compat opcional com código legado
 log_line() {
-  local cmd="${1:-?}" stage="${2:-?}" status="${3:-?}"
-  printf '{"id":"%s","ts":"%s","event":"%s","stage":"%s","status":"%s"}\n' \
-    "${EASYENV_LOG_ID:-none}" "$(__now_iso)" "$cmd" "$stage" "$status" >> "$USER_LOG"
+  ensure_log_dirs
+  local cmd="${1:-}" stage="${2:-}" note="${3:-}"
+  local ts; ts="$(now_iso)"
+  printf '%s\t%s\t%s\t%s\n' "$ts" "$cmd" "$stage" "$note" >> "$USER_LOG"
 }

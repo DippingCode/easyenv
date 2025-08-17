@@ -1,4 +1,78 @@
 tasks:
+  - name: "Comando tools install"
+    date: "2025-08-17T16:55:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "16"
+    task: "Criar comando easyenv tools install e integrar ao instalador"
+    commit: "feat(tools): adicionar presenter/cli/tools.sh e usar no install.sh"
+    files_created:
+      - path: "src/presenter/cli/tools.sh"
+        type: "bash"
+    files_updated:
+      - path: "bin/install.sh"
+        type: "bash"
+    summary:
+      - Novo comando `easyenv tools install` para instalar pré-requisitos e utilitários.
+      - Instalador 1-liner passou a invocar o comando oficial (melhor organização e logging).
+    notes:
+      - A lógica de instalação permanece centralizada em `src/data/services/tools.sh`.
+      - O comando pode ser reexecutado a qualquer momento de forma idempotente.
+    next_steps:
+      - Adicionar `easyenv tools list` (ler `config/tools.yml`) e `easyenv tools update`.
+      
+  - name: "Bootstrap de ferramentas e correções do router"
+    date: "2025-08-17T16:45:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "15"
+    task: "Criar tools.yml + tools.sh (bootstrap) e corrigir router/log"
+    commit: "feat(bootstrap): tools.yml + instalador automático; fix(router): variáveis e GUID no stdout"
+    files_created:
+      - path: "config/tools.yml"
+        type: "yaml"
+      - path: "src/data/services/tools.sh"
+        type: "bash"
+    files_updated:
+      - path: "src/core/router.sh"
+        type: "bash"
+      - path: "bin/install.sh"
+        type: "bash"
+    summary:
+      - Instalação automática de pré-requisitos (Homebrew, yq), oh-my-zsh e tema spaceship.
+      - Catálogo `config/tools.yml` com utilitários de qualidade de vida.
+      - `router.sh` não imprime mais o GUID e não falha com variáveis não inicializadas.
+      - `install.sh` chama o bootstrap de ferramentas no final.
+    notes:
+      - O tema padrão agora é spaceship (ajustável depois via `easyenv theme`).
+      - Após a instalação, execute `source ~/.zprofile && source ~/.zshrc`.
+    next_steps:
+      - Criar `presenter/cli/status.sh` básico e `presenter/cli/update.sh`.
+      - Adicionar comando `easyenv tools install` (wrapper) usando o mesmo serviço.
+
+  - name: "Correções de version/logging"
+    date: "2025-08-17T16:35:00-03:00"
+    author: "easyenv-assistant"
+    version_scope: "0.0.1"
+    version: "0.0.1"
+    build: "14"
+    task: "Corrigir leitura de versão (fallback) e erro de printf no logging"
+    commit: "fix(version,logging): fallback robusto de versão e remoção de printf -- no logging"
+    files_updated:
+      - path: "src/presenter/cli/version.sh"
+        type: "bash"
+      - path: "src/core/logging.sh"
+        type: "bash"
+    summary:
+      - Fallback de versão agora usa grep+sed e funciona sem yq.
+      - Removido uso potencial de 'printf --' no logging; impressão JSON padronizada.
+    notes:
+      - Caso docs/dev_log.yml não exista, exibimos 'v0.0.0' como fallback.
+    next_steps:
+      - Implementar `version --detailed` com fallback sem yq (opcional) exibindo listas formatadas (atual com yq já OK).
+
   - name: "Installer: banner + auto-help"
     date: "2025-08-17T16:25:00-03:00"
     author: "easyenv-assistant"

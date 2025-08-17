@@ -1,319 +1,293 @@
 #!/usr/bin/env bash
-# data/services/tools.sh — operações sobre o catálogo de ferramentas (config/tools.yml)
+# presenter/cli/tools.sh — gestão do catálogo de ferramentas (tools.yml)
 
-set -euo pipefail
+# -------------------------------------------------------------------
+# HELP
+# -------------------------------------------------------------------
+_tools_help(){
+  cat <<'EOF'
+Uso:
+  easyenv tools <subcomando>
 
-EASYENV_HOME="${EASYENV_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
-source "${EASYENV_HOME}/src/core/utils.sh"
-source "${EASYENV_HOME}/src/core/guards.sh"
+Subcomandos:
+  install                    Instala os pré-requisitos e utilitários definidos em config/tools.yml
+  list [--detailed|--json]   Lista o catálogo de ferramentas
+  update                     Atualiza todas as ferramentas do catálogo
+  uninstall                  Desinstala todas as ferramentas do catálogo (confirmação interativa)
 
-# ---------- Pré-requisitos ----------
-__ensure_prereqs(){
-  # Git é necessário para clone de plugins e oh-my-zsh
-  require_cmd "git" "Instale git primeiro (no macOS já vem: Xcode CLT)."
-  # Homebrew (no macOS)
-  if ! command -v brew >/dev/null 2>&1; then
-    info "Homebrew não encontrado — instalando…"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    # shellenv para sessão atual
-    if [[ -x /opt/homebrew/bin/brew ]]; then
-      eval "$(/opt/homebrew/bin/brew shellenv)"
-    elif [[ -x /usr/local/bin/brew ]]; then
-      eval "$(/usr/local/bin/brew shellenv)"
+Exemplos:
+  easyenv tools install
+  easyenv tools list
+  easyenv tools list --detailed
+  easyenv tools update
+  easyenv tools uninstall
+EOF
+}
+
+# -------------------------------------------------------------------
+# Caminho do catálogo
+# -------------------------------------------------------------------
+_tools_cfg_path(){
+  # fonte da verdade do catálogo
+  echo "${EASYENV_HOME}/config/tools.yml"
+}
+
+# -------------------------------------------------------------------
+# Parser leve de YAML -> TSV
+# Gera linhas: name|section|type|formula|cask|description
+# Observações:
+#   - assume estrutura nivelada conforme nosso tools.yml
+#   - ignora itens sem "name"
+# -------------------------------------------------------------------
+_tools_parse_yaml_to_tsv(){
+  local cfg="$1"
+  awk '
+    BEGIN{
+      in_tools=0; in_item=0; name=""; section=""; type=""; formula=""; cask=""; desc=""; in_brew=0;
+    }
+    # Detecta início da lista
+    /^tools:/ { in_tools=1; next }
+
+    # Dentro da lista, cada item começa por "- name:"
+    in_tools==1 && $0 ~ /^[[:space:]]*-[[:space:]]name:/ {
+      # se já havia um item, imprime antes de iniciar o próximo
+      if(name != ""){
+        print name "|" section "|" type "|" formula "|" cask "|" desc;
+      }
+      # reseta para novo item
+      name=""; section=""; type=""; formula=""; cask=""; desc=""; in_item=1; in_brew=0;
+
+      # captura o name da mesma linha
+      gsub(/^[[:space:]]*-[[:space:]]name:[[:space:]]*/, "", $0);
+      gsub(/^"|"$/, "", $0); gsub(/^'\''|'\''$/, "", $0);
+      name=$0;
+      next;
+    }
+
+    # Se aparecer uma nova chave de item ("- name:") e tínhamos um em curso,
+    # já tratamos no bloco acima. Agora capturamos campos do item corrente:
+    in_item==1 {
+      # sai do brew quando aparece nova chave do item em mesmo nível
+      if($0 ~ /^[[:space:]]*brew:[[:space:]]*{[[:space:]]*}[[:space:]]*$/){ in_brew=0 } # brew: {}
+
+      # bloco brew: começa quando vê "brew:" e não é objeto vazio
+      if($0 ~ /^[[:space:]]*brew:[[:space:]]*$/){ in_brew=1; next }
+
+      # campos simples
+      if($0 ~ /^[[:space:]]*section:/){
+        line=$0; sub(/^[[:space:]]*section:[[:space:]]*/, "", line);
+        gsub(/^"|"$/, "", line); gsub(/^'\''|'\''$/, "", line);
+        section=line;
+        next;
+      }
+      if($0 ~ /^[[:space:]]*type:/){
+        line=$0; sub(/^[[:space:]]*type:[[:space:]]*/, "", line);
+        gsub(/^"|"$/, "", line); gsub(/^'\''|'\''$/, "", line);
+        type=line;
+        next;
+      }
+      if($0 ~ /^[[:space:]]*description:/){
+        line=$0; sub(/^[[:space:]]*description:[[:space:]]*/, "", line);
+        gsub(/^"|"$/, "", line); gsub(/^'\''|'\''$/, "", line);
+        desc=line;
+        next;
+      }
+
+      # dentro de brew:, captura formula/cask
+      if(in_brew==1){
+        if($0 ~ /^[[:space:]]*formula:/){
+          line=$0; sub(/^[[:space:]]*formula:[[:space:]]*/, "", line);
+          gsub(/^"|"$/, "", line); gsub(/^'\''|'\''$/, "", line);
+          formula=line;
+          next;
+        }
+        if($0 ~ /^[[:space:]]*cask:/){
+          line=$0; sub(/^[[:space:]]*cask:[[:space:]]*/, "", line);
+          gsub(/^"|"$/, "", line); gsub(/^'\''|'\''$/, "", line);
+          cask=line;
+          next;
+        }
+        # fim do bloco brew quando encontra uma linha com nível anterior (nova chave simples)
+        if($0 ~ /^[[:space:]]*[a-zA-Z0-9_-]+:/ && $0 !~ /^[[:space:]]*(formula|cask):/){
+          in_brew=0;
+        }
+      }
+    }
+
+    END{
+      # imprime o último pendente
+      if(name != ""){
+        print name "|" section "|" type "|" formula "|" cask "|" desc;
+      }
+    }
+  ' "$cfg"
+}
+
+# -------------------------------------------------------------------
+# Render helpers
+# -------------------------------------------------------------------
+_tools_print_table(){
+  # cabeçalhos: Name, Section, Type, Source
+  printf "Name               Section      Type      Source\n"
+  printf "-----------------  -----------  --------  ------------------------------\n"
+  local IFS=$'\n'
+  for ln in "$@"; do
+    local name section type formula cask desc source
+    name="$(echo "$ln" | cut -d'|' -f1)"
+    section="$(echo "$ln" | cut -d'|' -f2)"
+    type="$(echo "$ln" | cut -d'|' -f3)"
+    formula="$(echo "$ln" | cut -d'|' -f4)"
+    cask="$(echo "$ln" | cut -d'|' -f5)"
+    if [[ -n "$formula" && "$formula" != "null" ]]; then
+      source="brew:${formula}"
+    elif [[ -n "$cask" && "$cask" != "null" ]]; then
+      source="cask:${cask}"
+    else
+      source="-"
     fi
-  fi
-  # yq para ler o catálogo
-  if ! command -v yq >/dev/null 2>&1; then
-    info "Instalando yq…"
-    brew install yq
-  fi
+    printf "%-17s  %-11s  %-8s  %s\n" "$name" "$section" "$type" "$source"
+  done
 }
 
-__brew_shellenv_now(){
-  if command -v brew >/dev/null 2>&1; then
-    local p; p="$(brew --prefix 2>/dev/null || true)"
-    if [[ -n "$p" && -x "$p/bin/brew" ]]; then
-      eval "$("$p/bin/brew" shellenv)"
+_tools_print_table_detailed(){
+  # cabeçalhos: Name, Section, Type, Brew(formula/cask), Description
+  printf "Name               Section      Type      Brew(formula/cask)            Description\n"
+  printf "-----------------  -----------  --------  ------------------------------ -----------------------------------------\n"
+  local IFS=$'\n'
+  for ln in "$@"; do
+    local name section type formula cask desc brew
+    name="$(echo "$ln" | cut -d'|' -f1)"
+    section="$(echo "$ln" | cut -d'|' -f2)"
+    type="$(echo "$ln" | cut -d'|' -f3)"
+    formula="$(echo "$ln" | cut -d'|' -f4)"
+    cask="$(echo "$ln" | cut -d'|' -f5)"
+    desc="$(echo "$ln" | cut -d'|' -f6)"
+    if [[ -n "$formula" && "$formula" != "null" ]]; then
+      brew="$formula"
+    elif [[ -n "$cask" && "$cask" != "null" ]]; then
+      brew="$cask"
+    else
+      brew="-"
     fi
-  fi
+    printf "%-17s  %-11s  %-8s  %-30s %s\n" "$name" "$section" "$type" "$brew" "$desc"
+  done
 }
 
-# ---------- Utilidades ----------
-__human_size(){
-  # bytes -> human (aproximado)
-  local bytes="${1:-0}"
-  awk -v b="$bytes" 'function hum(x){s="B   KB  MB  GB  TB  PB";n=split(s,a);for(i=1;i<=n&&x>=1024;i++)x/=1024;return sprintf("%.0f%s",x,a[i])} BEGIN{print hum(b)}'
-}
-
-__jq_escape(){
-  # escape simples p/ json string
-  printf '%s' "$1" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'
-}
-
-# ---------- Leitura do catálogo ----------
-__tools_count(){
-  local yml="$1"
-  yq -r '.tools | length' "$yml" 2>/dev/null || echo 0
-}
-
-__tools_iter(){
-  # imprime nome|section|type|brew_formula|brew_cask
-  local yml="$1"
-  yq -r '.tools[] | [
-      (.name // ""),
-      (.section // ""),
-      (.type // ""),
-      (.brew.formula // ""),
-      (.brew.cask // "")
-    ] | @tsv' "$yml" 2>/dev/null \
-  | awk -F'\t' '{printf "%s|%s|%s|%s|%s\n",$1,$2,$3,$4,$5}'
-}
-
-# ---------- Listagem ----------
-tools_service_list_plain(){
-  local yml="$1"
-  local n; n="$(__tools_count "$yml")"
-  echo "Ferramentas no catálogo (${n}):"
-  __tools_iter "$yml" | awk -F'|' '{printf " - %-20s %-10s (%s)\n",$1,$2,$3}'
-}
-
-tools_service_list_detailed(){
-  local yml="$1"
-  local n; n="$(__tools_count "$yml")"
-  echo "Catálogo detalhado (${n}):"
+_tools_print_json(){
+  local first=1
+  echo "["
+  local IFS=$'\n'
+  for ln in "$@"; do
+    local name section type formula cask desc
+    name="$(echo "$ln" | cut -d'|' -f1 | sed 's/"/\\"/g')"
+    section="$(echo "$ln" | cut -d'|' -f2 | sed 's/"/\\"/g')"
+    type="$(echo "$ln" | cut -d'|' -f3 | sed 's/"/\\"/g')"
+    formula="$(echo "$ln" | cut -d'|' -f4 | sed 's/"/\\"/g')"
+    cask="$(echo "$ln" | cut -d'|' -f5 | sed 's/"/\\"/g')"
+    desc="$(echo "$ln" | cut -d'|' -f6 | sed 's/"/\\"/g')"
+    if (( first==0 )); then echo ","; fi
+    printf '  {"name":"%s","section":"%s","type":"%s","brew":{"formula":"%s","cask":"%s"},"description":"%s"}' \
+      "$name" "$section" "$type" "${formula:-}" "${cask:-}" "${desc:-}"
+    first=0
+  done
   echo
-  printf "%-20s %-12s %-8s  %-24s %-18s\n" "NAME" "SECTION" "TYPE" "BREW(FORMULA)" "BREW(CASK)"
-  printf -- "------------------------------------------------------------------------------------------\n"
-  __tools_iter "$yml" \
-    | while IFS='|' read -r name section type f c; do
-        printf "%-20s %-12s %-8s  %-24s %-18s\n" "$name" "$section" "$type" "${f:-"-"}" "${c:-"-"}"
-      done
+  echo "]"
 }
 
-tools_service_list_json(){
-  local yml="$1"
-  yq -o=json '.tools' "$yml"
-}
+# -------------------------------------------------------------------
+# LIST
+# -------------------------------------------------------------------
+_tools_list(){
+  local detailed=0 as_json=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --detailed) detailed=1 ;;
+      --json)     as_json=1  ;;
+      -h|--help)  _tools_help; return 0 ;;
+      *)          ;; # ignorar flags desconhecidas aqui
+    esac
+    shift || true
+  done
 
-# ---------- Instalação/Atualização/Remoção ----------
-__run_block(){
-  local shcode="$1"
-  [[ -z "${shcode// }" ]] && return 0
-  # executa em subshell bash -lc para pegar PATH do brew shellenv
-  bash -lc "$shcode"
-}
-
-__ensure_node_for_npm(){
-  if ! command -v npm >/dev/null 2>&1; then
-    info "npm não encontrado — instalando Node (LTS) via brew…"
-    brew install node
-  fi
-}
-
-__install_one(){
-  local name="$1" section="$2" type="$3" formula="$4" cask="$5" yml="$6"
-
-  _bld "Instalando: $name"
-  __brew_shellenv_now
-
-  # brew formula/cask
-  if [[ -n "$formula" && "$formula" != "null" ]]; then
-    if brew list --formula | grep -qx "$formula"; then
-      info "brew: $formula já instalado."
-    else
-      info "brew install $formula"
-      brew install "$formula"
-    fi
-  fi
-  if [[ -n "$cask" && "$cask" != "null" ]]; then
-    if brew list --cask | grep -qx "$cask"; then
-      info "brew cask: $cask já instalado."
-    else
-      info "brew install --cask $cask"
-      brew install --cask "$cask"
-    fi
-  fi
-
-  # extra installs (npm/git/custom)
-  local npm_pkg; npm_pkg="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .extra.install_npm // empty' "$yml")"
-  local git_repo; git_repo="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .extra.install_git.repo // empty' "$yml")"
-  local git_dest; git_dest="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .extra.install_git.dest // empty' "$yml")"
-  local install_block; install_block="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .install // empty' "$yml")"
-
-  if [[ -n "$npm_pkg" && "$npm_pkg" != "null" ]]; then
-    __ensure_node_for_npm
-    info "npm i -g $npm_pkg"
-    npm install -g "$npm_pkg" || warn "Falha ao instalar npm:$npm_pkg (continuando)"
-  fi
-
-  if [[ -n "$git_repo" && "$git_repo" != "null" ]]; then
-    local d="${git_dest:-$HOME/.local/share/${name}}"
-    if [[ -d "$d/.git" ]]; then
-      info "git repo já presente em $d — atualizando…"
-      git -C "$d" pull --ff-only || true
-    else
-      info "git clone $git_repo → $d"
-      mkdir -p "$(dirname "$d")"
-      git clone "$git_repo" "$d" || warn "Falha ao clonar $git_repo"
-    fi
-  fi
-
-  if [[ -n "$install_block" && "$install_block" != "null" ]]; then
-    info "Rodando bloco install de $name…"
-    __run_block "$install_block" || warn "Bloco install falhou em $name (continuando)"
-  fi
-
-  # env/aliases/paths no ~/.zshrc
-  local zshrc_file="$HOME/.zshrc"
-  local env_count; env_count="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .env | length // 0' "$yml")"
-  local alias_count; alias_count="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .aliases | length // 0' "$yml")"
-  local paths_count; paths_count="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .paths | length // 0' "$yml")"
-
-  if (( env_count + alias_count + paths_count > 0 )); then
-    local block="# >>> EASYENV:TOOL:${name} >>>"$'\n'
-    if (( env_count > 0 )); then
-      while IFS= read -r line; do
-        block+="${line}"$'\n'
-      done < <(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .env[]' "$yml")
-    fi
-    if (( alias_count > 0 )); then
-      while IFS= read -r line; do
-        block+="${line}"$'\n'
-      done < <(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .aliases[]' "$yml")
-    fi
-    if (( paths_count > 0 )); then
-      while IFS= read -r line; do
-        block+="${line}"$'\n'
-      done < <(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .paths[]' "$yml")
-    fi
-    block+="# <<< EASYENV:TOOL:${name} <<<"$'\n'
-    # remove bloco antigo e injeta novo (idempotente simples)
-    if [[ -f "$zshrc_file" ]]; then
-      awk -v s="# >>> EASYENV:TOOL:${name} >>>" -v e="# <<< EASYENV:TOOL:${name} <<<" '
-        BEGIN{skip=0}
-        $0==s {skip=1; next}
-        $0==e {skip=0; next}
-        skip==0 {print}
-      ' "$zshrc_file" > "$zshrc_file.__tmp" && mv "$zshrc_file.__tmp" "$zshrc_file"
-    fi
-    printf "\n%s" "$block" >> "$zshrc_file"
-  fi
-
-  ok "$name instalado."
-}
-
-__update_one(){
-  local name="$1" formula="$2" cask="$3" yml="$4"
-  __brew_shellenv_now
-  brew update || true
-  if [[ -n "$formula" && "$formula" != "null" ]]; then
-    if brew list --formula | grep -qx "$formula"; then
-      info "brew upgrade $formula"
-      brew upgrade "$formula" || true
-    fi
-  fi
-  if [[ -n "$cask" && "$cask" != "null" ]]; then
-    if brew list --cask | grep -qx "$cask"; then
-      info "brew upgrade --cask $cask"
-      brew upgrade --cask "$cask" || true
-    fi
-  fi
-
-  local update_cmd; update_cmd="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .update_cmd // empty' "$yml")"
-  if [[ -n "$update_cmd" && "$update_cmd" != "null" ]]; then
-    __run_block "$update_cmd" || true
-  fi
-  ok "$name atualizado."
-}
-
-__uninstall_one(){
-  local name="$1" formula="$2" cask="$3" yml="$4"
-  __brew_shellenv_now
-  if [[ -n "$formula" && "$formula" != "null" ]] && brew list --formula | grep -qx "$formula"; then
-    info "brew uninstall $formula"
-    brew uninstall "$formula" || true
-  fi
-  if [[ -n "$cask" && "$cask" != "null" ]] && brew list --cask | grep -qx "$cask"; then
-    info "brew uninstall --cask $cask"
-    brew uninstall --cask "$cask" || true
-  fi
-
-  local uninstall_block; uninstall_block="$(yq -r --arg n "$name" '.tools[] | select(.name==$n) | .uninstall // empty' "$yml")"
-  if [[ -n "$uninstall_block" && "$uninstall_block" != "null" ]]; then
-    __run_block "$uninstall_block" || true
-  fi
-
-  # limpar bloco do zshrc
-  local zshrc_file="$HOME/.zshrc"
-  if [[ -f "$zshrc_file" ]]; then
-    awk -v s="# >>> EASYENV:TOOL:${name} >>>" -v e="# <<< EASYENV:TOOL:${name} <<<" '
-      BEGIN{skip=0}
-      $0==s {skip=1; next}
-      $0==e {skip=0; next}
-      skip==0 {print}
-    ' "$zshrc_file" > "$zshrc_file.__tmp" && mv "$zshrc_file.__tmp" "$zshrc_file"
-  fi
-
-  ok "$name removido."
-}
-
-# ---------- Orquestradores públicos ----------
-tools_service_install_all(){
-  local yml="$1"
-  __ensure_prereqs
-  if [[ ! -f "$yml" ]]; then
-    err "Catálogo inexistente: $yml"
-    return 1
-  fi
-  __brew_shellenv_now
-
-  # ordem: garanta oh-my-zsh / tema cedo
-  local ordered
-  ordered="$(yq -r '.tools | sort_by(.type == "core" ? 0 : 1) | .[] | .name' "$yml")"
-  if [[ -z "$ordered" ]]; then
-    warn "Nenhuma ferramenta definida em $yml"
+  local cfg; cfg="$(_tools_cfg_path)"
+  if [[ ! -f "$cfg" ]]; then
+    printf "\033[33m⚠️  Catálogo não encontrado em: %s\033[0m\n" "$cfg"
+    echo "Crie/adicione um 'config/tools.yml'."
     return 0
   fi
 
-  while IFS='|' read -r name section type formula cask; do
-    __install_one "$name" "$section" "$type" "$formula" "$cask" "$yml"
-  done < <(__tools_iter "$yml")
+  # parse
+  mapfile -t rows < <(_tools_parse_yaml_to_tsv "$cfg")
+  if (( ${#rows[@]} == 0 )); then
+    printf "\033[33m⚠️  Nenhuma ferramenta encontrada em: %s\033[0m\n" "$cfg"
+    return 0
+  fi
+
+  if (( as_json==1 )); then
+    _tools_print_json "${rows[@]}"
+    return 0
+  fi
+
+  if (( detailed==1 )); then
+    _tools_print_table_detailed "${rows[@]}"
+  else
+    _tools_print_table "${rows[@]}"
+  fi
 }
 
-tools_service_update_all(){
-  local yml="$1"
-  __ensure_prereqs
-  if [[ ! -f "$yml" ]]; then
-    err "Catálogo inexistente: $yml"
-    return 1
+# -------------------------------------------------------------------
+# INSTALL / UPDATE / UNINSTALL
+# (já existem em presenter/cli/tools_install.sh etc.; aqui só roteamos)
+# -------------------------------------------------------------------
+_tools_install(){
+  if declare -F tools_install_core >/dev/null 2>&1; then
+    tools_install_core "$@"
+  else
+    echo "Instalador não disponível neste build."
   fi
-  __brew_shellenv_now
-  while IFS='|' read -r name _ _ formula cask; do
-    __update_one "$name" "$formula" "$cask" "$yml"
-  done < <(__tools_iter "$yml")
+}
+_tools_update(){
+  if declare -F tools_update_core >/dev/null 2>&1; then
+    tools_update_core "$@"
+  else
+    echo "Atualizador não disponível neste build."
+  fi
+}
+_tools_uninstall(){
+  if declare -F tools_uninstall_core >/dev/null 2>&1; then
+    tools_uninstall_core "$@"
+  else
+    echo "Desinstalador não disponível neste build."
+  fi
 }
 
-tools_service_uninstall_all(){
-  local yml="$1"
-  __ensure_prereqs
-  if [[ ! -f "$yml" ]]; then
-    err "Catálogo inexistente: $yml"
-    return 1
-  fi
-  echo
-  warn "Você está prestes a desinstalar TODAS as ferramentas listadas em $yml."
-  read -r -p "Confirmar? (yes/NO) " ans || true
-  if [[ ! "$ans" =~ ^(y|Y|yes|YES)$ ]]; then
-    info "Operação cancelada."
-    return 1
-  fi
-
-  # desinstala em ordem inversa só por segurança
-  tac_out="$(__tools_iter "$yml" | tac || cat)" # se tac indisponível, cai no cat (ordem normal)
-  while IFS='|' read -r name _ _ formula cask; do
-    __uninstall_one "$name" "$formula" "$cask" "$yml"
-  done <<< "$tac_out"
-
-  # um cleanup leve do brew
-  brew cleanup -s || true
+# -------------------------------------------------------------------
+# ENTRYPOINT
+# -------------------------------------------------------------------
+cmd_tools(){
+  local sub="${1:-}"
+  case "$sub" in
+    ""|-h|--help|help)
+      _tools_help
+      ;;
+    list)
+      shift || true
+      _tools_list "$@"
+      ;;
+    install)
+      shift || true
+      _tools_install "$@"
+      ;;
+    update)
+      shift || true
+      _tools_update "$@"
+      ;;
+    uninstall)
+      shift || true
+      _tools_uninstall "$@"
+      ;;
+    *)
+      _tools_help
+      ;;
+  esac
 }

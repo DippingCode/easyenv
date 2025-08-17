@@ -1,105 +1,143 @@
 #!/usr/bin/env bash
-# presenter/cli/version.sh
-# Exibe a versão do easyenv baseada na última entrada do /dev_log.yml
-# Suporte: -v/--version (router já redireciona), --detailed, -h/--help
+# presenter/cli/version.sh — imprime versão a partir do dev_log.yml
 
-set -euo pipefail
-
-cmd_version_help() {
-  cat <<'EOF'
-Uso:
-  easyenv version [--detailed]
-
-Descrição:
-  Lê a versão atual a partir do topo de /dev_log.yml (primeira entrada em tasks).
-
-Opções:
-  --detailed    Mostra detalhes da build (version, build, summary, notes, next_steps)
-  -h, --help    Mostra esta ajuda
-
-Exemplos:
-  easyenv version
-  easyenv version --detailed
-EOF
-}
-
-# Lê o topo do dev_log.yml com yq.
-# Retorna 0 se conseguir ler, 1 caso contrário.
-_read_devlog_top() {
-  local devlog="${EASYENV_HOME:-$HOME}/dev_log.yml"
-  [[ -f "$devlog" ]] || return 1
-  command -v yq >/dev/null 2>&1 || return 1
-
-  # Exporta variáveis globais com os campos principais.
-  DEVLOG_VERSION="$(yq -r '.tasks[0].version // ""' "$devlog" 2>/dev/null || echo "")"
-  DEVLOG_BUILD="$(yq -r '.tasks[0].build // ""' "$devlog" 2>/dev/null || echo "")"
-
-  # Arrays impressos depois (mantemos texto pronto em variáveis)
-  DEVLOG_SUMMARY="$(yq -r '.tasks[0].summary // [] | @json' "$devlog" 2>/dev/null || echo "[]")"
-  DEVLOG_NOTES="$(yq -r '.tasks[0].notes // [] | @json' "$devlog" 2>/dev/null || echo "[]")"
-  DEVLOG_NEXT="$(yq -r '.tasks[0].next_steps // [] | @json' "$devlog" 2>/dev/null || echo "[]")"
-
-  [[ -n "${DEVLOG_VERSION:-}" ]]
-}
-
-_print_list_from_json_array() {
-  # recebe JSON array em $1 e um prefixo de bullet em $2 (ex.: " - ")
-  local json="$1" bullet="${2:- - }"
-  # Se tiver jq, usamos pra ficar robusto; senão, yq; senão, best-effort.
-  if command -v jq >/dev/null 2>&1; then
-    echo "$json" | jq -r ".[] | \"$bullet\" + tostring" 2>/dev/null || true
-  elif command -v yq >/dev/null 2>&1; then
-    # yq v4 consegue ler json também
-    echo "$json" | yq -r '.[]' 2>/dev/null | sed "s/^/${bullet}/" || true
-  else
-    # fallback: tira colchetes e aspas simples
-    echo "$json" | sed -E 's/^\[|\]$//g; s/^"|"$//g; s/","/\n/g; s/", "/\n/g' | sed "s/^/${bullet}/"
-  fi
-}
-
-cmd_version() {
+cmd_version(){
   local detailed=0
-
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --detailed) detailed=1 ;;
-      -h|--help)  cmd_version_help; return 0 ;;
-      *)          # ignora args extras silenciosamente
-                  ;;
+      --detailed|-d) detailed=1 ;;
+      -h|--help) _version_help; return 0 ;;
+      *) ;; # ignora flags desconhecidas aqui
     esac
     shift || true
   done
 
-  local version="0.0.0" build=""
-  if _read_devlog_top; then
-    version="$DEVLOG_VERSION"
-    build="$DEVLOG_BUILD"
-  fi
-
-  # Linha única padrão (sem duplicar saída)
-  if [[ -n "$build" && "$build" != "null" ]]; then
-    echo "easyenv v${version} (build ${build})"
+  local devlog
+  if [[ -f "$EASYENV_HOME/dev_log.yml" ]]; then
+    devlog="$EASYENV_HOME/dev_log.yml"
+  elif [[ -f "$EASYENV_HOME/docs/dev_log.yml" ]]; then
+    devlog="$EASYENV_HOME/docs/dev_log.yml"
   else
-    echo "easyenv v${version}"
+    echo "easyenv v0.0.0"
+    return 0
   fi
 
-  # Modo detalhado: imprime seções amigáveis
+  local ver build
+  ver="$(_devlog_first_field "$devlog" "version")"
+  build="$(_devlog_first_field "$devlog" "build")"
+
+  ver="${ver:-0.0.0}"
+  if [[ -n "$build" ]]; then
+    echo "easyenv v${ver} (build ${build})"
+  else
+    echo "easyenv v${ver}"
+  fi
+
   if (( detailed==1 )); then
     echo
-    echo "Detalhes:"
-    printf "  • version: %s\n" "$version"
-    printf "  • build  : %s\n" "${build:-"-"}"
+    _print_detailed_from_devlog "$devlog"
+  fi
+}
 
-    echo
-    echo "O que há de novo:"
-    _print_list_from_json_array "${DEVLOG_SUMMARY:-"[]"}" "   - "
+_version_help(){
+  cat <<EOF
+Uso:
+  easyenv version [--detailed]
 
-    echo
-    echo "Notas:"
-    _print_list_from_json_array "${DEVLOG_NOTES:-"[]"}" "   - "
+Descrição:
+  Lê a versão atual a partir do arquivo dev_log.yml (na raiz do repositório).
+  Se não existir, tenta docs/dev_log.yml.
 
+Opções:
+  --detailed, -d   Mostra detalhes desta build (summary, notes, next_steps).
+EOF
+}
+
+# Retorna o primeiro valor encontrado de uma chave simples (ex.: version, build)
+# Considera que a entrada mais recente foi adicionada logo após "tasks:".
+_devlog_first_field(){
+  local file="$1" key="$2"
+  # Procura a primeira ocorrência do campo imediatamente após "tasks:"
+  awk -v k="$key" '
+    BEGIN{in_tasks=0}
+    /^tasks:/ {in_tasks=1; next}
+    in_tasks==1 {
+      # captura a primeira ocorrência do campo desejado
+      if ($0 ~ "^[[:space:]]*" k "[[:space:]]*:") {
+        # remove até ":" e espaços; remove aspas
+        sub(/^[[:space:]]*[^:]+:[[:space:]]*/, "", $0)
+        gsub(/^"[ ]*|"[ ]*$/,"",$0)
+        gsub(/^'\''[ ]*|'\''[ ]*$/,"",$0)
+        print $0
+        exit
+      }
+      # se achar um novo item de tarefa "- name:", continua, mas ainda só quer o primeiro
+      if ($0 ~ "^[[:space:]]*- name:[[:space:]]*") { if (found==1) exit }
+    }
+  ' "$file" 2>/dev/null
+}
+
+# Extrai blocos de listas YAML sob summary/notes/next_steps do primeiro item em tasks:
+# Imprime em formato de bullets simples.
+_print_detailed_from_devlog(){
+  local file="$1"
+
+  echo "Detalhes desta build:"
+  echo
+
+  # Versão e build novamente (em cabeçalho)
+  local ver build
+  ver="$(_devlog_first_field "$file" "version")"
+  build="$(_devlog_first_field "$file" "build")"
+  [[ -n "$ver"  ]] && echo "  • version: $ver"
+  [[ -n "$build" ]] && echo "  • build  : $build"
+  echo
+
+  _print_yaml_list "$file" "summary"    "O que há de novo"
+  _print_yaml_list "$file" "notes"      "Notas"
+  _print_yaml_list "$file" "next_steps" "Próximos passos"
+}
+
+# Imprime a lista YAML do primeiro bloco de tasks: para uma dada chave (ex.: summary)
+_print_yaml_list(){
+  local file="$1" key="$2" title="$3"
+
+  # Extrai apenas o primeiro item dentro de tasks:, coletando linhas da lista '- ' sob a chave
+  local content
+  content="$(awk -v key="$key" '
+    BEGIN{in_tasks=0; in_first_item=0; grab=0}
+    /^tasks:/ {in_tasks=1; next}
+    in_tasks==1 {
+      # Detecta início do primeiro item de task
+      if ($0 ~ "^[[:space:]]*- name:[[:space:]]*") { 
+        if (in_first_item==0) { in_first_item=1 }
+        else { 
+          # chegamos ao próximo item: se já coletamos algo, parar
+          if (grab==1) exit
+        }
+      }
+
+      # Quando achar a chave, liga a captura
+      if (in_first_item==1 && $0 ~ "^[[:space:]]*" key ":[[:space:]]*$") { grab=1; next }
+
+      # Enquanto grab==1, coletar linhas com "- " (lista) mantendo o texto após "- "
+      if (grab==1) {
+        if ($0 ~ "^[[:space:]]*-[[:space:]]") {
+          # remove prefixos até o "- "
+          sub(/^[[:space:]]*-[[:space:]]*/, "", $0)
+          print $0
+          next
+        } else {
+          # terminou a lista (encontrou linha que não começa com "- ")
+          exit
+        }
+      }
+    }
+  ' "$file" 2>/dev/null)"
+
+  if [[ -n "$content" ]]; then
+    echo "$title:"
+    echo "$content" | sed 's/^/  - /'
     echo
-    echo "Próximos passos:"
-    _print_list_from_json_array "${DEVLOG_NEXT:-"[]"}" "   - "
   fi
 }

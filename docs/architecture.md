@@ -141,6 +141,7 @@ easyenv/
 ├── config/
 │	├── .env						 # Arquivo para armazenar variáveis de ambiente
 │   ├── user_preferences.yml         # preferencias do usuário para a ferramenta
+│   ├── tools.yml         # preferencias do usuário para a ferramenta
 │   └── default.zshrc                # zshrc base (merge)
 │	
 ├── docs

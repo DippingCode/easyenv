@@ -1,42 +1,61 @@
-//Package eye é a raiz do CLI EasyEnv.io. Ele lida com a inicialização e o roteamento dos comandos.
 package main
 
 import (
 	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
+
 
 	"github.com/spf13/cobra"
-	
-	// Importações dos roteadores de cada módulo de primeiro nível.
-	"github.com/DippingCode/easyenv/pkg/modules/version" 
-    "github.com/DippingCode/easyenv/pkg/modules/preferences"
+
+	// Importações dos roteadores
+	"github.com/DippingCode/easyenv/pkg/modules/interactiveshell"
+	"github.com/DippingCode/easyenv/pkg/core/config/themeloaderservice"
+	"github.com/DippingCode/easyenv/pkg/modules/preferences"
 )
 
-// rootCmd é o comando raiz para o CLI.
 var rootCmd = &cobra.Command{
 	Use:   "eye",
-	Short: "EasyEnv.io CLI",
-	Long:  `Um CLI para gerenciar seu ambiente de desenvolvimento.`,
+	Short: "Gerencia seu ambiente de desenvolvimento.",
+	Long:  `O CLI do EasyEnv.io. Digite 'exit' para sair.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+		// Passo 1: Obter os caminhos dos arquivos.
+		currentUser, err := user.Current()
+		if err != nil {
+			fmt.Println("Erro ao obter o diretório do usuário:", err)
+			os.Exit(1)
+		}
+		userConfigPath := filepath.Join(currentUser.HomeDir, ".easyenv", "config.yml")
+		themesAssetsPath := "assets/themes/themes_template.yml"
+
+		// Passo 2: Instanciar e usar o serviço de carregamento de temas.
+		themeLoader := themeloaderservice.NewThemeLoaderService(userConfigPath, themesAssetsPath)
+		currentTheme, err := themeLoader.LoadTheme()
+		if err != nil {
+			fmt.Println("Erro ao carregar o tema:", err)
+			os.Exit(1)
+		}
+
+		// Passo 3: Passar o tema carregado para a função de execução do interactive_shell.
+		// AQUI ESTÁ A CORREÇÃO: a variável 'currentTheme' é passada como argumento.
+		interactiveshell.Run(args, currentTheme)
 	},
 }
 
-// Execute adiciona todos os comandos filhos ao comando raiz e os executa.
+
+// init() do Cobra para registrar subcomandos.
+func init() {
+	// Apenas para que o Cobra reconheça os comandos,
+	// mas a execução será gerenciada internamente pelo shell.
+	rootCmd.AddCommand(preferences.GetRouter())
+	// rootCmd.AddCommand(version.GetRouter())
+}
+
+// Execute adiciona todos os comandos filhos ao comando raiz
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-}
-
-// init é a função que registra todos os roteadores dos módulos.
-func init() {
-	// Registro dos roteadores de módulo.
-	rootCmd.AddCommand(version.GetRouter())
-    rootCmd.AddCommand(preferences.GetRouter())
-
-    // A lógica para adicionar flags globais (persistent flags) deve ser feita aqui.
-    // Exemplo:
-    // rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.easyenv.yaml)")
 }

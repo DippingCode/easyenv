@@ -1,4 +1,4 @@
-//Package help
+// Package help
 package help
 
 import (
@@ -7,26 +7,27 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/DippingCode/easyenv/pkg/core/ui/themes"
+	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 // HelpData é a estrutura de dados para popular o componente de ajuda.
 type HelpData struct {
-	Command      string
+	Command          string
 	ShortDescription string
-	Flags        [][]string
+	Flags            [][]string
+	Examples         [][]string // New field
 }
 
 // Model representa o modelo do componente Bubble Tea.
 type Model struct {
 	data HelpData
-	theme themes.Theme
+	theme themetemplate.ThemeTemplate
 }
 
 // NewModel cria um novo modelo de ajuda.
-func NewModel(data HelpData, theme themes.Theme) Model {
+func NewModel(data HelpData, theme themetemplate.ThemeTemplate) Model {
 	return Model{
 		data: data,
 		theme: theme,
@@ -71,11 +72,28 @@ func (m Model) View() string {
 
 	tw.Flush()
 
+	// Seções de exemplos
+	if len(m.data.Examples) > 0 {
+		fmt.Fprintln(&b, "") // Add a newline for spacing
+		examplesHeader := m.theme.HeaderStyle.Render("Exemplos de Uso")
+		fmt.Fprintln(&b, examplesHeader)
+
+		examplesTw := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(examplesTw, separatorStyle.Render("---	---")) // Separator for examples
+
+		for _, example := range m.data.Examples {
+			if len(example) == 2 {
+				fmt.Fprintf(examplesTw, "%s\t%s\n", m.theme.ListItemStyle.Render(example[0]), m.theme.BaseStyle.Render(example[1]))
+			}
+		}
+		examplesTw.Flush()
+	}
+
 	return b.String()
 }
 
 // RenderHelp é uma função utilitária para rodar o componente de ajuda.
-func RenderHelp(data HelpData, theme themes.Theme) {
+func RenderHelp(data HelpData, theme themetemplate.ThemeTemplate) {
 	p := tea.NewProgram(NewModel(data, theme))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Ocorreu um erro: %v", err)

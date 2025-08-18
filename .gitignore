@@ -128,3 +128,5 @@ config/.env
 # --- Zips/arquivos grandes gerados (evitar por padrão) ---
 # (backups já estão em /backups ou /var/backups, mas fica a proteção extra)
 # *.zip
+
+eye

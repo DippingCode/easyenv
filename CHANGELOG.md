@@ -3,6 +3,19 @@ Todas as alterações notáveis neste projeto serão documentadas aqui.
 
 ## Versions
 
+#### [0.0.2] - 2025-08-18
+
+###### Changed
+- Polished `version` command output for both short and detailed versions.
+
+###### Build Details
+- Build: 27
+- Tag: v0.0.2+27
+- Commit: feat(version): polish output format and update build to 27
+
+---
+
+
 #### [0.0.2] - 2025-08-17 
 
 ###### Added

@@ -1,24 +1,6 @@
 # Changelog
 Todas as alterações notáveis neste projeto serão documentadas aqui.
 
----
-
-#### [Unreleased]
-
-###### Added
-- *(placeholder)* — registrar aqui novas features antes da próxima versão.
-
-###### Changed
-- *(placeholder)* — registrar refatorações ou alterações de comportamento.
-
-###### Notes
-- *(placeholder)* — anotações temporárias ou decisões técnicas pendentes.
-
-###### Next Steps
-- *(placeholder)* — próximos passos que podem virar issues/tarefas.
-
----
-
 ## Versions
 
 #### [0.0.2] - 2025-08-17 

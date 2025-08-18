@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		userConfigPath := filepath.Join(currentUser.HomeDir, ".easyenv", "config.yml")
-		themesAssetsPath := "assets/themes/themes_template.yml"
+		themesAssetsPath := "assets/themes/template.yml"
 
 		// Passo 2: Instanciar e usar o serviço de carregamento de temas.
 		themeLoader := themeloaderservice.NewThemeLoaderService(userConfigPath, themesAssetsPath)

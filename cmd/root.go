@@ -6,12 +6,11 @@ import (
 	"os/user"
 	"path/filepath"
 
-
 	"github.com/spf13/cobra"
 
 	// Importações dos roteadores
-	"github.com/DippingCode/easyenv/pkg/modules/interactiveshell"
 	"github.com/DippingCode/easyenv/pkg/core/config/themeloaderservice"
+	interactiveshell "github.com/DippingCode/easyenv/pkg/modules/interactiveshell/presenter"
 	"github.com/DippingCode/easyenv/pkg/modules/preferences"
 )
 

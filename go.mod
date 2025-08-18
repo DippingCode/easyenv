@@ -1,4 +1,4 @@
-module github.com/DippingCode/easyenv/src
+module github.com/DippingCode/easyenv
 
 go 1.25.0
 

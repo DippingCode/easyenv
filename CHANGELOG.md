@@ -6,6 +6,20 @@ Todas as alterações notáveis neste projeto serão documentadas aqui.
 #### [0.0.2] - 2025-08-18
 
 ###### Changed
+- Fixed `preferences` module errors (`undefined: list`, type mismatch in `ShowThemeMenu`).
+- Adjusted `--theme` flag to accept values or open interactive menu.
+
+###### Build Details
+- Build: 28
+- Tag: v0.0.2+28
+- Commit: fix(preferences): resolve build errors and improve theme flag handling
+
+---
+
+
+#### [0.0.2] - 2025-08-18
+
+###### Changed
 - Polished `version` command output for both short and detailed versions.
 
 ###### Build Details

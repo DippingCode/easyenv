@@ -29,18 +29,6 @@ func RenderVersion(vm *viewmodel.VersionViewModel, detailed bool) {
 		build = v.Meta.Build.Build
 	}
 
-	fmt.Println("===================================")
-	if badge != "" && build != "" {
-		fmt.Printf(" EasyEnv - %s (%s) [%s]\n", title, build, badge)
-	} else if build != "" {
-		fmt.Printf(" EasyEnv - %s (%s)\n", title, build)
-	} else if badge != "" {
-		fmt.Printf(" EasyEnv - %s [%s]\n", title, badge)
-	} else {
-		fmt.Printf(" EasyEnv - %s\n", title)
-	}
-	fmt.Println("===================================")
-
 	// Modo detalhado
 	if !detailed {
 		// Saída enxuta: número + build (quando houver)
@@ -51,6 +39,18 @@ func RenderVersion(vm *viewmodel.VersionViewModel, detailed bool) {
 		}
 		return
 	}
+
+	fmt.Println("==============================================")
+	if badge != "" && build != "" {
+		fmt.Printf(" EasyEnv - %s | build - (%s) [%s]\n", title, build, badge)
+	} else if build != "" {
+		fmt.Printf(" EasyEnv - %s | build - (%s)\n", title, build)
+	} else if badge != "" {
+		fmt.Printf(" EasyEnv - %s [%s]\n", title, badge)
+	} else {
+		fmt.Printf(" EasyEnv - %s\n", title)
+	}
+	fmt.Println("==============================================")
 
 	// Added
 	if len(v.Meta.Added) > 0 {

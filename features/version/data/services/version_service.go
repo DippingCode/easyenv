@@ -53,7 +53,7 @@ func (s *VersionService) FetchVersion() (*entities.Version, error) {
 	bd := extractBuildDetails(sectionBody)
 
 	v := &entities.Version{
-		Title:     strings.TrimSpace(headerLine),
+		Title:     fmt.Sprintf("v%s - %s", number, date),
 		Number:    number,
 		Date: date,
 		Meta: entities.VersionMeta{
@@ -97,7 +97,8 @@ func firstVersionSection(md string) (sectionBody string, headerLine string, err 
 	}
 
 	// Cabeçalho de versão: "#### [0.0.2] - 2025-08-17"
-	verHeaderRE := regexp.MustCompile(`(?m)^#{3,6}\s*$begin:math:display$(\\d+\\.\\d+\\.\\d+)$end:math:display$\s*-\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*$`)
+	//verHeaderRE := regexp.MustCompile(`(?m)^#{3,6}\s*$begin:math:display$(\\d+\\.\\d+\\.\\d+)$end:math:display$\s*-\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*$`)
+	verHeaderRE := regexp.MustCompile(`(?m)^#{3,6}\s*\[(\d+\.\d+\.\d+)\]\s*[-–—]\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*$`)
 
 	sub := md[start:]
 	if m := verHeaderRE.FindStringIndex(sub); m != nil {
@@ -129,7 +130,8 @@ func firstVersionSection(md string) (sectionBody string, headerLine string, err 
 
 // parseHeader extrai número e data do cabeçalho da versão.
 func parseHeader(headerLine string) (number string, date string) {
-	re := regexp.MustCompile(`^\s*#{3,6}\s*$begin:math:display$([0-9]+\\.[0-9]+\\.[0-9]+)$end:math:display$\s*-\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*$`)
+	//re := regexp.MustCompile(`^\s*#{3,6}\s*$begin:math:display$([0-9]+\\.[0-9]+\\.[0-9]+)$end:math:display$\s*-\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*$`)
+	re := regexp.MustCompile(`^\s*#{3,6}\s*\[([0-9]+\.[0-9]+\.[0-9]+)\]\s*[-–—]\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*$`)
 	if m := re.FindStringSubmatch(headerLine); m != nil {
 		return m[1], m[2]
 	}

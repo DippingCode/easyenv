@@ -1,5 +1,5 @@
 // Package preferences implementa a feature para gerenciar as preferências do usuário.
-// O router do pacote lida com o comando 'preferences' e seus subcomandos.
+// O router do pacote lida com o command 'preferences' e seus subcommands.
 package preferences
 
 import (
@@ -8,10 +8,11 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
+
 	"github.com/DippingCode/easyenv/pkg/modules/preferences/data/services"
 	"github.com/DippingCode/easyenv/pkg/modules/preferences/domain/usecases"
-	presenter "github.com/DippingCode/easyenv/pkg/modules/preferences/presenter/themePreference"
-	"github.com/spf13/cobra"
+	presenter "github.com/DippingCode/easyenv/pkg/modules/preferences/presenter/themepreference"
 )
 
 // Define as variáveis de flags do módulo
@@ -36,9 +37,9 @@ func GetRouter() *cobra.Command {
 	return preferencesCmd
 }
 
-// runPreferences é a função principal do comando `preferences`.
+// runPreferences é a função principal do command `preferences`.
 func runPreferences(cmd *cobra.Command, args []string) {
-	// Obter o caminho do arquivo de configuração
+	// Obter o diretório de configuração do usuário.
 	currentUser, err := user.Current()
 	if err != nil {
 		presenter.ShowError("Erro ao obter o usuário.", err)
@@ -46,11 +47,11 @@ func runPreferences(cmd *cobra.Command, args []string) {
 	}
 	configPath := filepath.Join(currentUser.HomeDir, ".easyenv", "config.yml")
 
-	// Inicializar o serviço e o usecase
+	// Inicializar o serviço e o usecase.
 	preferencesService := services.NewFilePreferencesService(configPath)
 	preferencesUsecase := usecases.NewPreferencesUsecase(preferencesService)
 
-	// Lógica principal do comando
+	// A lógica do command se baseia nas flags.
 	if themeFlag != "" {
 		if themeFlag == "menu" {
 			presenter.ShowThemeMenu(preferencesUsecase)
@@ -64,6 +65,6 @@ func runPreferences(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Se nenhum comando ou flag for especificado, mostre a ajuda.
+	// Se nenhum command ou flag for especificado, mostre a ajuda.
 	presenter.ShowHelp(cmd)
 }

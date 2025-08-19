@@ -1,21 +1,23 @@
-// Package themes
+// Package themes provides predefined UI themes for the application.
 package themes
 
 import (
-	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 	"github.com/charmbracelet/lipgloss"
+
+	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 )
 
+// Dark retorna um ThemeTemplate com as cores e estilos do tema escuro.
 func Dark() themetemplate.ThemeTemplate {
 	// Definição das cores para o tema escuro.
 	const (
-		googleBlue    = lipgloss.Color("#4285F4")
-		googleYellow  = lipgloss.Color("#F4B400")
-		googleGreen   = lipgloss.Color("#0F9D58")
-		googleRed     = lipgloss.Color("#DB4437")
-		geminiBG      = lipgloss.Color("#0B0C0E")
-		geminiFG      = lipgloss.Color("#E0E0E0")
-		geminiAccent  = lipgloss.Color("#565656")
+		googleBlue        = lipgloss.Color("#4285F4")
+		googleYellow      = lipgloss.Color("#F4B400")
+		googleGreen       = lipgloss.Color("#0F9D58")
+		googleRed         = lipgloss.Color("#DB4437")
+		geminiBG          = lipgloss.Color("#0B0C0E")
+		geminiFG          = lipgloss.Color("#E0E0E0")
+		geminiAccent      = lipgloss.Color("#565656")
 		geminiHighlightBG = lipgloss.Color("#252525")
 	)
 

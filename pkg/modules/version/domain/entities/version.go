@@ -1,3 +1,4 @@
+// Package entities defines the core data structures for version information.
 package entities
 
 // Version represents the application version information.

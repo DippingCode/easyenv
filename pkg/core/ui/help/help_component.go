@@ -1,4 +1,4 @@
-// Package help
+// Package help provides a UI component for displaying help information.
 package help
 
 import (
@@ -7,9 +7,10 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 )
 
 // HelpData é a estrutura de dados para popular o componente de ajuda.
@@ -22,14 +23,14 @@ type HelpData struct {
 
 // Model representa o modelo do componente Bubble Tea.
 type Model struct {
-	data HelpData
+	data  HelpData
 	theme themetemplate.ThemeTemplate
 }
 
 // NewModel cria um novo modelo de ajuda.
 func NewModel(data HelpData, theme themetemplate.ThemeTemplate) Model {
 	return Model{
-		data: data,
+		data:  data,
 		theme: theme,
 	}
 }
@@ -48,45 +49,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var b strings.Builder
 
-	// Título do comando
-	title := m.theme.TitleStyle.Render(fmt.Sprintf("Comando %s", m.data.Command))
-	fmt.Fprintln(&b, title)
-	fmt.Fprintln(&b, m.theme.BaseStyle.Render(m.data.ShortDescription))
-	fmt.Fprintln(&b, "")
+	// Título do command
+	title := m.theme.TitleStyle.Render(fmt.Sprintf("Command %s", m.data.Command))
+	_, _ = fmt.Fprintln(&b, title)
+	_, _ = fmt.Fprintln(&b, m.theme.BaseStyle.Render(m.data.ShortDescription))
+	_, _ = fmt.Fprintln(&b, "")
 
 	// Tabela de flags
 	flagsHeader := m.theme.HeaderStyle.Render("Flags")
-	fmt.Fprintln(&b, flagsHeader)
+	_, _ = fmt.Fprintln(&b, flagsHeader)
 
 	// Usa um tabwriter para alinhar as colunas da tabela
 	tw := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
-	
+
 	// Corrigido: usando lipgloss.NewStyle().Foreground() para renderizar a linha.
 	separatorStyle := lipgloss.NewStyle().Foreground(m.theme.BorderColor)
-	fmt.Fprintln(tw, m.theme.BaseStyle.Render("Flag\tDescrição"))
-	fmt.Fprintln(tw, separatorStyle.Render("---\t---"))
+	_, _ = fmt.Fprintln(tw, m.theme.BaseStyle.Render("Flag\tDescrição"))
+	_, _ = fmt.Fprintln(tw, separatorStyle.Render("---\t---"))
 
 	for _, flag := range m.data.Flags {
-		fmt.Fprintf(tw, "%s\t%s\n", m.theme.ListItemStyle.Render(flag[0]), m.theme.BaseStyle.Render(flag[1]))
+		_, _ = fmt.Fprintf(tw, "%s\t%s\n", m.theme.ListItemStyle.Render(flag[0]), m.theme.BaseStyle.Render(flag[1]))
 	}
 
-	tw.Flush()
+	_ = tw.Flush()
 
 	// Seções de exemplos
 	if len(m.data.Examples) > 0 {
-		fmt.Fprintln(&b, "") // Add a newline for spacing
+		_, _ = fmt.Fprintln(&b, "") // Add a newline for spacing
 		examplesHeader := m.theme.HeaderStyle.Render("Exemplos de Uso")
-		fmt.Fprintln(&b, examplesHeader)
+		_, _ = fmt.Fprintln(&b, examplesHeader)
 
 		examplesTw := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(examplesTw, separatorStyle.Render("---	---")) // Separator for examples
+		_, _ = fmt.Fprintln(examplesTw, separatorStyle.Render("---\t---")) // Separator for examples
 
 		for _, example := range m.data.Examples {
 			if len(example) == 2 {
-				fmt.Fprintf(examplesTw, "%s\t%s\n", m.theme.ListItemStyle.Render(example[0]), m.theme.BaseStyle.Render(example[1]))
+				_, _ = fmt.Fprintf(examplesTw, "%s\t%s\n", m.theme.ListItemStyle.Render(example[0]), m.theme.BaseStyle.Render(example[1]))
 			}
 		}
-		examplesTw.Flush()
+		_ = examplesTw.Flush()
 	}
 
 	return b.String()

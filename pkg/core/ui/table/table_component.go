@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"os"
 
-	//"github.com/charmbracelet/lipgloss"
-	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/evertras/bubble-table/table"
+
+	//"github.com/charmbracelet/lipgloss"
+	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 )
 
 // ColumnData define a estrutura para a coluna da tabela.
@@ -36,11 +37,11 @@ func NewModel(columns []ColumnData, rows []table.Row, theme themetemplate.ThemeT
 	t := table.New(cols).
 		WithRows(rows).
 		WithBaseStyle(theme.BaseStyle).
-		//WithAllRowsDeselected().BorderDefault().Focused(false).
+		// WithAllRowsDeselected().BorderDefault().Focused(false).
 		BorderDefault().Focused(false).
-		//WithFocused(false).
-		//WithBorderStyle(theme.Border).
-		//WithBorder(theme.Border).
+		// WithFocused(false).
+		// WithBorderStyle(theme.Border).
+		// WithBorder(theme.Border).
 		WithFooterVisibility(false).
 		WithPageSize(len(rows))
 

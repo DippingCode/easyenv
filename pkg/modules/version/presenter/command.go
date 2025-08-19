@@ -1,9 +1,10 @@
 package presenter
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/DippingCode/easyenv/pkg/modules/version/data/services"
 	"github.com/DippingCode/easyenv/pkg/modules/version/domain/usecases"
-	"github.com/spf13/cobra"
 )
 
 var detailed bool

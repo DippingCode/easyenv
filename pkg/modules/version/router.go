@@ -1,8 +1,9 @@
-//Package version
+// Package version provides the routing for the version module.
 package version
 
 import (
 	"github.com/spf13/cobra"
+
 	"github.com/DippingCode/easyenv/pkg/modules/version/presenter" // Import the presenter package
 )
 

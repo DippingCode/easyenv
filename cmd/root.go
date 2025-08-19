@@ -38,20 +38,22 @@ var rootCmd = &cobra.Command{
 
 		// Passo 3: Passar o tema carregado para a função de execução do interactive_shell.
 		// AQUI ESTÁ A CORREÇÃO: a variável 'currentTheme' é passada como argumento.
-		interactiveshell.Run(args, currentTheme)
+		if err := interactiveshell.Run(args, currentTheme); err != nil {
+			fmt.Println("Erro ao executar o shell interativo:", err)
+			os.Exit(1)
+		}
 	},
 }
 
-
 // init() do Cobra para registrar subcomandos.
 func init() {
-	// Apenas para que o Cobra reconheça os comandos,
+	// Apenas para que o Cobra reconheça os commands,
 	// mas a execução será gerenciada internamente pelo shell.
 	rootCmd.AddCommand(preferences.GetRouter())
 	// rootCmd.AddCommand(version.GetRouter())
 }
 
-// Execute adiciona todos os comandos filhos ao comando raiz
+// Execute adiciona todos os commands filhos ao command raiz
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

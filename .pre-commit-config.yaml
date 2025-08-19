@@ -1,0 +1,14 @@
+repos:
+  - repo: https://github.com/mvdan/gofumpt
+    rev: v0.6.0
+    hooks:
+      - id: gofumpt-rewrite
+  - repo: https://github.com/daixiang0/gci
+    rev: v0.13.5
+    hooks:
+      - id: gci
+        args: ["write", "-s", "standard", "-s", "default", "-s", "prefix(github.com/DippingCode/easyenv)", "."]
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.60.0
+    hooks:
+      - id: golangci-lint

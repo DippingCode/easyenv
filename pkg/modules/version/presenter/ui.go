@@ -1,4 +1,4 @@
-// package presenter
+// Package presenter provides UI-related functions for the version module.
 package presenter
 
 import (
@@ -40,4 +40,3 @@ func PrintDetailedVersion(version *entities.Version) {
 		fmt.Println() // Add a newline for spacing
 	}
 }
-

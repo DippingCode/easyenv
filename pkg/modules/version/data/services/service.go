@@ -33,7 +33,7 @@ func (s *VersionService) FetchVersion() (*entities.Version, error) {
 		return nil, err
 	}
 
-	data, err := os.ReadFile(changelogPath)
+	data, err := os.ReadFile(changelogPath) // #nosec G304 -- changelogPath is not user-controlled, derived from CWD and fixed filenames.
 	if err != nil {
 		return nil, fmt.Errorf("falha ao ler %s: %w", changelogPath, err)
 	}
@@ -73,7 +73,10 @@ func (s *VersionService) FetchVersion() (*entities.Version, error) {
 
 // resolveChangelogPath tenta localizar o CHANGELOG.md na raiz do projeto.
 func resolveChangelogPath() (string, error) {
-	cw, _ := os.Getwd()
+	cw, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("falha ao obter o diretório de trabalho: %w", err)
+	}
 	candidates := []string{
 		filepath.Join(cw, "CHANGELOG.md"),
 		filepath.Join(cw, "docs", "CHANGELOG.md"),

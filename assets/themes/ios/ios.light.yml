@@ -1,0 +1,176 @@
+meta: { name: "ios-light", version: 1, description: "iOS Light • Indigo + Cyan", author: "you", charset_priority: ["unicode","ascii"] }
+
+palette:
+  ansi:
+    black: { fg: 0, bg: 0 } ; red: { fg: 1, bg: 1 } ; green: { fg: 2, bg: 2 } ; yellow: { fg: 3, bg: 3 }
+    blue: { fg: 4, bg: 4 } ; magenta: { fg: 5, bg: 5 } ; cyan: { fg: 6, bg: 6 } ; white: { fg: 7, bg: 7 }
+    bright_black: { fg: 8, bg: 8 } ; bright_red: { fg: 9, bg: 9 } ; bright_green: { fg: 10, bg: 10 } ; bright_yellow: { fg: 11, bg: 11 }
+    bright_blue: { fg: 12, bg: 12 } ; bright_magenta: { fg: 13, bg: 13 } ; bright_cyan: { fg: 14, bg: 14 } ; bright_white: { fg: 15, bg: 15 }
+
+  semantic:
+    bg:             { rgb: "#FFFFFF" }   # iOS systemBackground (light)
+    surface:        { rgb: "#F2F2F7" }   # secondarySystemBackground
+    surface_alt:    { rgb: "#EEF2F7" }   # variação
+    text:           { rgb: "#0B0B0C" }   # label
+    text_muted:     { rgb: "#3C3C43" }   # secondaryLabel (aprox.)
+    primary:        { rgb: "#4F46E5" }   # INDIGO (mantém identidade)
+    primary_on:     { rgb: "#FFFFFF" }
+    secondary:      { rgb: "#22D3EE" }   # CIANO (acento)
+    success:        { rgb: "#34C759" }   # iOS green (light)
+    warning:        { rgb: "#FF9500" }   # iOS orange
+    danger:         { rgb: "#FF3B30" }   # iOS red
+    info:           { rgb: "#32ADE6" }   # iOS cyan
+    overlay_scrim:  { rgb: "#000000", alpha: 0.25 }
+
+  state:
+    focus:
+      border: { color: { rgb: "#4F46E5" }, style: ["bold"] }
+      text:   { color: { rgb: "#0B0B0C" } }
+      bg:     { color: { rgb: "#EEF2F7" } }
+      effect: "reverse"
+    hover:
+      border: { color: { rgb: "#D1D5DB" } }
+      bg:     { color: { rgb: "#F8FAFC" } }
+    active:
+      effect: "reverse"
+    disabled:
+      text:   { color: { rgb: "#9CA3AF" } }
+      border: { color: { rgb: "#E5E7EB" } }
+
+typography:
+  scale:
+    h1: { line: 2, style: ["bold"] }
+    h2: { line: 2, style: ["bold"] }
+    h3: { line: 1, style: ["bold"] }
+    h4: { line: 1, style: ["bold"] }
+    h5: { line: 1, style: [] }
+    h6: { line: 1, style: ["dim"] }
+    title: { line: 1, style: ["bold"] }
+    body:  { line: 1, style: [] }
+    label: { line: 1, style: ["italic"] }
+    code:  { line: 1, style: [] }
+  colors:
+    default: { color: { rgb: "#0B0B0C" } }
+    muted:   { color: { rgb: "#3C3C43" } }
+    inverse: { color: { rgb: "#FFFFFF" }, bg: { rgb: "#0B0B0C" } }
+    success: { color: { rgb: "#34C759" } }
+    warning: { color: { rgb: "#FF9500" } }
+    danger:  { color: { rgb: "#FF3B30" } }
+    link:    { color: { rgb: "#4F46E5" }, style: ["underline"] }
+
+spacing:
+  unit: 1
+  inset: { xs: 0, sm: 1, md: 2, lg: 3, xl: 4 }
+  gap:   { xs: 0, sm: 1, md: 2, lg: 3, xl: 4 }
+
+radii: { none: 0, sm: 1, md: 1, lg: 1 }
+
+borders:
+  sets:
+    ascii_single:
+      h: "-" ; v: "|" ; tl: "+" ; tr: "+" ; bl: "+" ; br: "+" ; tee_t: "+" ; tee_b: "+" ; tee_l: "+" ; tee_r: "+" ; cross: "+"
+    unicode_light:
+      h: "─" ; v: "│" ; tl: "┌" ; tr: "┐" ; bl: "└" ; br: "┘" ; tee_t: "┬" ; tee_b: "┴" ; tee_l: "├" ; tee_r: "┤" ; cross: "┼"
+    unicode_rounded:
+      h: "─" ; v: "│" ; tl: "╭" ; tr: "╮" ; bl: "╰" ; br: "╯" ; tee_t: "┬" ; tee_b: "┴" ; tee_l: "├" ; tee_r: "┤" ; cross: "┼"
+  tokens:
+    none:   { set: "ascii_single",    color: { rgb: "#E5E7EB" }, width: 0 }
+    thin:   { set: "unicode_light",   color: { rgb: "#D1D5DB" }, width: 1 }
+    round:  { set: "unicode_rounded", color: { rgb: "#D1D5DB" }, width: 1 }
+    focus:  { set: "unicode_light",   color: { rgb: "#4F46E5" }, width: 1, style: ["bold"] }
+    danger: { set: "unicode_light",   color: { rgb: "#FF3B30" }, width: 1 }
+
+elevation:
+  none:   { shadow_bg: null, offset: [0,0] }
+  low:    { shadow_bg: { rgb: "#000000", alpha: 0.08 }, offset: [1,1] }
+  medium: { shadow_bg: { rgb: "#000000", alpha: 0.12 }, offset: [1,1] }
+  high:   { shadow_bg: { rgb: "#000000", alpha: 0.16 }, offset: [1,2] }
+
+effects:
+  focus:   ["reverse"]
+  hovered: []
+  pressed: ["reverse"]
+  disabled:["dim"]
+
+components:
+  BoardBox:
+    bg: { rgb: "#FFFFFF" }
+    padding: { x: 0, y: 0 }
+  Box:
+    layout: { default: "column", gap: { x: 1, y: 0 } }
+    padding_token: "sm"
+    bg: { rgb: "#F2F2F7" }
+    border_token: "none"
+  CardBox:
+    bg: { rgb: "#FFFFFF" }
+    border_token: "thin"
+    padding_token: "md"
+    elevation: "low"
+    title: { typographic: "h5", color: { rgb: "#0B0B0C" } }
+  TextBox:
+    padding_token: "xs"
+    default_color: { rgb: "#0B0B0C" }
+    default_type: "body"
+    wrap: true
+    ellipsis: "…"
+  Text:
+    variants:
+      h1: { type: "h1", color: { rgb: "#0B0B0C" }, style: ["bold"] }
+      h2: { type: "h2", color: { rgb: "#0B0B0C" }, style: ["bold"] }
+      h3: { type: "h3", color: { rgb: "#0B0B0C" }, style: ["bold"] }
+      h4: { type: "h4", color: { rgb: "#0B0B0C" }, style: ["bold"] }
+      h5: { type: "h5", color: { rgb: "#0B0B0C" }, style: [] }
+      h6: { type: "h6", color: { rgb: "#3C3C43" }, style: [] }
+      title: { type: "title", color: { rgb: "#0B0B0C" }, style: ["bold"] }
+      body:  { type: "body",  color: { rgb: "#0B0B0C" }, style: [] }
+      label: { type: "label", color: { rgb: "#3C3C43" }, style: ["italic"] }
+      code:  { type: "code",  color: { rgb: "#22D3EE" }, style: [] }
+    links: { color: { rgb: "#4F46E5" }, style: ["underline"] }
+  Button:
+    base:
+      padding_token: "sm"
+      border_token: "thin"
+      align: "center"
+      min_width: 6
+      states:
+        default: { fg: { rgb: "#FFFFFF" }, bg: { rgb: "#4F46E5" } }
+        hover:   { fg: { rgb: "#FFFFFF" }, bg: { rgb: "#5B55EA" } }
+        focus:   { effect: "reverse", border_token: "focus" }
+        active:  { effect: "reverse" }
+        disabled:{ fg: { rgb: "#9CA3AF" }, bg: { rgb: "#E5E7EB" }, effect: "dim" }
+    variants:
+      secondary:
+        states:
+          default: { fg: { rgb: "#0B0B0C" }, bg: { rgb: "#F2F2F7" } }
+      ghost:
+        base: { border_token: "none" }
+        states:
+          default: { fg: { rgb: "#0B0B0C" }, bg: null }
+          hover:   { fg: { rgb: "#0B0B0C" }, bg: { rgb: "#EEF2F7" } }
+      danger:
+        states:
+          default: { fg: { rgb: "#FFFFFF" }, bg: { rgb: "#FF3B30" } }
+  Input:
+    padding_token: "sm"
+    border_token: "thin"
+    bg: { rgb: "#FFFFFF" }
+    placeholder: { color: { rgb: "#3C3C43" }, style: ["dim"] }
+    caret: { color: { rgb: "#4F46E5" } }
+    states:
+      default: { fg: { rgb: "#0B0B0C" }, bg: { rgb: "#FFFFFF" } }
+      focus:   { border_token: "focus" }
+      disabled:{ fg: { rgb: "#9CA3AF" },  bg: { rgb: "#F2F2F7" } }
+      error:   { border_token: "danger", fg: { rgb: "#FF3B30" } }
+    help_text: { color: { rgb: "#3C3C43" } }
+  List:
+    padding_token: "xs"
+    border_token: "none"
+    item:
+      normal:   { fg: { rgb: "#0B0B0C" } }
+      muted:    { fg: { rgb: "#3C3C43" } }
+      selected: { effect: "reverse", fg: { rgb: "#0B0B0C" }, bg: { rgb: "#F2F2F7" } }
+      focus:    { border_token: "focus" }
+    scrollbar:
+      enabled: true
+      track: { char: "░", color: { rgb: "#D1D5DB" } }
+      thumb: { char: "▒", color: { rgb: "#4F46E5" } }

@@ -1,99 +1,372 @@
-# Este arquivo contém a definição completa de todos os temas do EasyEnv.io.
+# ============================================================
+# THEME TEMPLATE — TUI (Terminal UI)
+# ============================================================
+# Este arquivo define tokens de tema para uma UI de terminal.
+# A engine deve:
+#  - Resolver cores por prioridade: rgb → 256-colors → ansi-16.
+#  - Aplicar tokens por componente (ver seção "components").
+#  - Dar fallback para ASCII se o terminal não suportar Unicode.
+#  - Tratar efeitos (reverse, dim, underline) conforme suporte do terminal.
 #
-# Para criar um tema personalizado, copie este arquivo e salve-o em
-# ~/.easyenv/my_theme.yml. Em seguida, edite o arquivo ~/.easyenv/config.yml
-# e defina a chave 'theme' para 'my_theme'.
-#
-# Formato das cores: Hexadecimal (#RRGGBB).
+# Dica: mantenha os nomes semânticos estáveis (bg, surface, text, primary)
+# para que telas e widgets não precisem conhecer valores literais de cor.
+# ============================================================
 
-#========================
-# TEMAS DISPONÍVEIS
-#========================
-themes:
-  # Tema escuro padrão, inspirado na paleta do Gemini CLI.
-  dark:
-    # --- Cores da Paleta ---
-    primary_color: "#4285F4"  # Azul do Google (para títulos e destaque)
-    secondary_color: "#F4B400" # Amarelo do Google (para cabeçalhos e acentos)
-    success_color: "#0F9D58"  # Verde do Google
-    error_color: "#DB4437"   # Vermelho do Google
-    warning_color: "#F4B400"  # Amarelo
-    info_color: "#4285F4"     # Azul
-    
-    background_color: "#0B0C0E"
-    foreground_color: "#E0E0E0"
-    highlight_color: "#252525" # Cor de fundo para itens de menu selecionados
+meta:
+  # Metadados do tema
+  name: "default"
+  version: 1
+  description: "Tema base TUI"
+  author: "you"
+  # Preferência por conjuntos de borda: a engine deve checar suporte do terminal
+  # e cair para 'ascii' caso Unicode não esteja disponível.
+  charset_priority: ["unicode", "ascii"]
 
-    # --- Estilos de Componentes ---
-    styles:
-      base:
-        foreground: "{{.ForegroundColor}}"
-        background: "{{.BackgroundColor}}"
+palette:
+  # ----------------------------------------------------------
+  # 'ansi' mapeia nomes para os 16 índices base do terminal.
+  # Use-os como fallback universal quando rgb/256 não existir.
+  # ----------------------------------------------------------
+  ansi:
+    black:         { fg: 0,   bg: 0   }
+    red:           { fg: 1,   bg: 1   }
+    green:         { fg: 2,   bg: 2   }
+    yellow:        { fg: 3,   bg: 3   }
+    blue:          { fg: 4,   bg: 4   }
+    magenta:       { fg: 5,   bg: 5   }
+    cyan:          { fg: 6,   bg: 6   }
+    white:         { fg: 7,   bg: 7   }
+    bright_black:  { fg: 8,   bg: 8   }
+    bright_red:    { fg: 9,   bg: 9   }
+    bright_green:  { fg: 10,  bg: 10  }
+    bright_yellow: { fg: 11,  bg: 11  }
+    bright_blue:   { fg: 12,  bg: 12  }
+    bright_magenta:{ fg: 13,  bg: 13  }
+    bright_cyan:   { fg: 14,  bg: 14  }
+    bright_white:  { fg: 15,  bg: 15  }
 
-      title:
-        foreground: "{{.PrimaryColor}}"
-        bold: true
-        padding: [0, 0, 1, 0] # top, right, bottom, left
+  # ----------------------------------------------------------
+  # 'semantic' define cores por papéis (bg, surface, text, primary…)
+  # em vez de valores literais. Isso permite “trocar pele” sem
+  # reescrever telas. A engine deve aceitar rgb e/ou indexes 256.
+  # ----------------------------------------------------------
+  semantic:
+    bg:             { ansi: "black",       rgb: "#0B0B0C" }   # cor de fundo da tela
+    surface:        { ansi: "bright_black",rgb: "#121316" }   # cartões/painéis
+    surface_alt:    { ansi: "bright_black",rgb: "#16181C" }   # variação de superfície
+    text:           { ansi: "white",       rgb: "#EAECEF" }   # cor principal do texto
+    text_muted:     { ansi: "bright_black",rgb: "#9AA0A6" }   # textos fracos/legendas
+    primary:        { ansi: "blue",        rgb: "#4F46E5" }   # destaque (botões, foco)
+    primary_on:     { ansi: "white",       rgb: "#F8FAFC" }   # texto sobre 'primary'
+    secondary:      { ansi: "cyan",        rgb: "#22D3EE" }   # segundo destaque
+    success:        { ansi: "green",       rgb: "#22C55E" }
+    warning:        { ansi: "yellow",      rgb: "#F59E0B" }
+    danger:         { ansi: "red",         rgb: "#EF4444" }
+    info:           { ansi: "cyan",        rgb: "#38BDF8" }
+    overlay_scrim:  { ansi: "black",       rgb: "#000000", alpha: 0.5 } # dim de fundo
 
-      header:
-        foreground: "{{.SecondaryColor}}"
-        bold: true
-        underline: true
-        padding: [0, 1]
+  # ----------------------------------------------------------
+  # 'state' define variações de cor/estilo por estados focais
+  # (focus/hover/active/disabled). A engine aplica onde suportado.
+  # ----------------------------------------------------------
+  state:
+    focus:
+      border: { color: { ansi: "bright_blue", rgb: "#60A5FA" }, style: ["bold"] }
+      text:   { color: { ansi: "white" } }
+      bg:     { color: { ansi: "surface_alt" } }
+      effect: "reverse"   # ou "underline", "none"
+    hover:
+      border: { color: { ansi: "bright_black" } }
+      bg:     { color: { ansi: "surface_alt" } }
+    active:
+      effect: "reverse"
+    disabled:
+      text: { color: { ansi: "bright_black" } }
+      border: { color: { ansi: "bright_black" } }
 
-      list_item:
-        foreground: "{{.ForegroundColor}}"
-        padding: [0, 2] # vertical, horizontal
+typography:
+  # ----------------------------------------------------------
+  # Em TUI não há fontes reais; aqui definimos “tipos” semânticos
+  # que controlam espaçamento vertical (line) e ênfase (style).
+  # Use estes tipos no Text/TextBox (ex.: type: h3).
+  # ----------------------------------------------------------
+  scale:
+    h1:   { line: 2, style: ["bold"] }
+    h2:   { line: 2, style: ["bold"] }
+    h3:   { line: 1, style: ["bold"] }
+    h4:   { line: 1, style: ["bold"] }
+    h5:   { line: 1, style: [] }
+    h6:   { line: 1, style: ["dim"] }
+    title:{ line: 1, style: ["bold"] }
+    body: { line: 1, style: [] }
+    label:{ line: 1, style: ["italic"] }
+    code: { line: 1, style: [] }
+  colors:
+    # Paleta de texto por semântica
+    default:     { color: { ansi: "text" } }
+    muted:       { color: { ansi: "text_muted" } }
+    inverse:     { color: { ansi: "black" }, bg: { ansi: "white" } }
+    success:     { color: { ansi: "success" } }
+    warning:     { color: { ansi: "warning" } }
+    danger:      { color: { ansi: "danger" } }
+    link:        { color: { ansi: "blue" }, style: ["underline"] }
 
-      highlight:
-        background: "{{.HighlightColor}}"
-        foreground: "{{.ForegroundColor}}"
-        bold: true
+spacing:
+  # ----------------------------------------------------------
+  # Tamanhos em “cells” (caracteres). Use tokens (xs..xl) para
+  # padding/margens/gaps e garantir consistência visual.
+  # ----------------------------------------------------------
+  unit: 1
+  inset:
+    xs: 0
+    sm: 1
+    md: 2
+    lg: 3
+    xl: 4
+  gap:
+    xs: 0
+    sm: 1
+    md: 2
+    lg: 3
+    xl: 4
 
-      border:
-        color: "{{.ForegroundColor}}"
-        border_type: "rounded" # "normal", "rounded", "thick", etc.
+radii:
+  # ----------------------------------------------------------
+  # Raio “virtual” — em TUI simulamos cantos com caracteres
+  # arredondados quando disponível (ver borders.sets).
+  # ----------------------------------------------------------
+  none: 0
+  sm: 1
+  md: 1
+  lg: 1
 
-  # Tema claro, uma variação da paleta Gemini.
+borders:
+  # ----------------------------------------------------------
+  # Conjuntos de caracteres para molduras.
+  # A engine escolhe um 'set' com base em charset_priority e token.
+  # ----------------------------------------------------------
+  sets:
+    ascii_single:
+      h: "-"  ; v: "|"  ; tl: "+" ; tr: "+" ; bl: "+" ; br: "+"
+      tee_t: "+" ; tee_b: "+" ; tee_l: "+" ; tee_r: "+" ; cross: "+"
+    unicode_light:
+      h: "─" ; v: "│" ; tl: "┌" ; tr: "┐" ; bl: "└" ; br: "┘"
+      tee_t: "┬" ; tee_b: "┴" ; tee_l: "├" ; tee_r: "┤" ; cross: "┼"
+    unicode_double:
+      h: "═" ; v: "║" ; tl: "╔" ; tr: "╗" ; bl: "╚" ; br: "╝"
+      tee_t: "╦" ; tee_b: "╩" ; tee_l: "╠" ; tee_r: "╣" ; cross: "╬"
+    unicode_rounded:
+      h: "─" ; v: "│" ; tl: "╭" ; tr: "╮" ; bl: "╰" ; br: "╯"
+      tee_t: "┬" ; tee_b: "┴" ; tee_l: "├" ; tee_r: "┤" ; cross: "┼"
+
+  tokens:
+    # Tokens nomeados que combinam set + cor + espessura/opções.
+    none:   { set: "ascii_single",    color: { ansi: "surface" }, width: 0 }
+    hair:   { set: "unicode_light",   color: { ansi: "surface" }, width: 1 }
+    thin:   { set: "unicode_light",   color: { ansi: "bright_black" }, width: 1 }
+    strong: { set: "unicode_double",  color: { ansi: "bright_blue" }, width: 1 }
+    round:  { set: "unicode_rounded", color: { ansi: "bright_black" }, width: 1 }
+    focus:  { set: "unicode_light",   color: { ansi: "bright_blue" }, width: 1, style: ["bold"] }
+    danger: { set: "unicode_light",   color: { ansi: "danger" }, width: 1 }
+
+elevation:
+  # ----------------------------------------------------------
+  # “Sombras” simuladas por background deslocado; use com moderação.
+  # ----------------------------------------------------------
+  none:   { shadow_bg: null, offset: [0, 0] }
+  low:    { shadow_bg: { ansi: "black", rgb: "#000000", alpha: 0.25 }, offset: [1, 1] }
+  medium: { shadow_bg: { ansi: "black", rgb: "#000000", alpha: 0.35 }, offset: [1, 1] }
+  high:   { shadow_bg: { ansi: "black", rgb: "#000000", alpha: 0.5  }, offset: [1, 2] }
+
+effects:
+  # ----------------------------------------------------------
+  # Efeitos globais (aplicados por estado).
+  # ----------------------------------------------------------
+  focus:   ["reverse"]
+  hovered: []
+  pressed: ["reverse"]
+  disabled:["dim"]
+
+# ============================================================
+# TOKENS POR COMPONENTE (valores padrão por widget)
+# ============================================================
+components:
+
+  BoardBox:
+    bg: { ansi: "bg" }
+    padding: { x: 0, y: 0 }
+    debug_grid:
+      enabled: false
+      char: "·"
+      color: { ansi: "bright_black" }
+
+  Box:
+    layout:
+      default: "column"       # row|column|grid|stack (se implementado)
+      gap: { x: 1, y: 0 }
+    padding_token: "sm"
+    bg: { ansi: "surface" }
+    border_token: "none"
+    grid:
+      columns: 12
+      col_gap: 2
+      row_gap: 0
+
+  CardBox:
+    bg: { ansi: "surface_alt" }
+    border_token: "thin"
+    padding_token: "md"
+    elevation: "low"
+    title:
+      typographic: "h5"
+      color: { ansi: "text" }
+
+  TextBox:
+    padding_token: "xs"
+    default_color: { ansi: "text" }
+    default_type: "body"
+    wrap: true
+    ellipsis: "…"
+
+  Text:
+    variants:
+      h1:   { type: "h1",   color: { ansi: "text" },        style: ["bold"] }
+      h2:   { type: "h2",   color: { ansi: "text" },        style: ["bold"] }
+      h3:   { type: "h3",   color: { ansi: "text" },        style: ["bold"] }
+      h4:   { type: "h4",   color: { ansi: "text" },        style: ["bold"] }
+      h5:   { type: "h5",   color: { ansi: "text" },        style: [] }
+      h6:   { type: "h6",   color: { ansi: "text_muted" },  style: [] }
+      title:{ type: "title",color: { ansi: "text" },        style: ["bold"] }
+      body: { type: "body", color: { ansi: "text" },        style: [] }
+      label:{ type: "label",color: { ansi: "text_muted" },  style: ["italic"] }
+      code: { type: "code", color: { ansi: "cyan" },        style: [] }
+    links:
+      color: { ansi: "blue" }
+      style: ["underline"]
+
+  Button:
+    base:
+      padding_token: "sm"
+      border_token: "thin"
+      align: "center"
+      min_width: 6
+      states:
+        default: { fg: { ansi: "text" },       bg: { ansi: "surface_alt" } }
+        hover:   { fg: { ansi: "text" },       bg: { ansi: "surface"    } }
+        focus:   { effect: "reverse", border_token: "focus" }
+        active:  { effect: "reverse" }
+        disabled:{ fg: { ansi: "text_muted" }, bg: { ansi: "surface"    }, effect: "dim" }
+    variants:
+      primary:
+        states:
+          default: { fg: { ansi: "primary_on" }, bg: { ansi: "primary" } }
+          hover:   { fg: { ansi: "primary_on" }, bg: { ansi: "blue"    } }
+      secondary:
+        states:
+          default: { fg: { ansi: "text" },      bg: { ansi: "surface" } }
+      ghost:
+        base: { border_token: "none" }
+        states:
+          default: { fg: { ansi: "text" },      bg: null }
+          hover:   { fg: { ansi: "text" },      bg: { ansi: "surface" } }
+      danger:
+        states:
+          default: { fg: { ansi: "primary_on" }, bg: { ansi: "danger" } }
+
+  Input:
+    padding_token: "sm"
+    border_token: "thin"
+    bg: { ansi: "bg" }
+    placeholder:
+      color: { ansi: "text_muted" }
+      style: ["dim"]
+    caret:
+      color: { ansi: "primary" }
+    states:
+      default: { fg: { ansi: "text" },     bg: { ansi: "bg" } }
+      focus:   { border_token: "focus",    effect: "none" }
+      disabled:{ fg: { ansi: "text_muted"}, bg: { ansi: "surface" } }
+      error:   { border_token: "danger",   fg: { ansi: "danger" } }
+    help_text:
+      color: { ansi: "text_muted" }
+
+  Checkbox:
+    glyphs:
+      unchecked: "[ ]"
+      checked:   "[x]"
+      mixed:     "[-]"
+    colors:
+      unchecked: { ansi: "text" }
+      checked:   { ansi: "primary" }
+      mixed:     { ansi: "warning" }
+
+  Radio:
+    glyphs:
+      off: "( )"
+      on:  "(•)"
+    colors:
+      off: { ansi: "text" }
+      on:  { ansi: "primary" }
+
+  List:
+    padding_token: "xs"
+    border_token: "none"
+    item:
+      normal:   { fg: { ansi: "text" } }
+      muted:    { fg: { ansi: "text_muted" } }
+      selected: { effect: "reverse", fg: { ansi: "text" }, bg: { ansi: "surface_alt" } }
+      focus:    { border_token: "focus" }
+    scrollbar:
+      enabled: true
+      track: { char: "░", color: { ansi: "bright_black" } }
+      thumb: { char: "▒", color: { ansi: "bright_blue" } }
+
+  AppBar:
+    height: 1
+    bg: { ansi: "surface_alt" }
+    fg: { ansi: "text" }
+    border_bottom: "hair"
+    title:
+      type: "h4"
+      color: { ansi: "text" }
+
+  Divider:
+    horizontal: { char: "─", color: { ansi: "bright_black" } }
+    vertical:   { char: "│", color: { ansi: "bright_black" } }
+
+  Spacer:
+    size_token: "sm"
+
+# ------------------------------------------------------------
+# 'aliases' permite referenciar tokens por nomes curtos
+# (útil para DSL/YAML de telas). A engine resolve os caminhos.
+# ------------------------------------------------------------
+aliases:
+  color_names:
+    bg:             "palette.semantic.bg"
+    surface:        "palette.semantic.surface"
+    surface_alt:    "palette.semantic.surface_alt"
+    text:           "palette.semantic.text"
+    text_muted:     "palette.semantic.text_muted"
+    primary:        "palette.semantic.primary"
+    primary_on:     "palette.semantic.primary_on"
+    success:        "palette.semantic.success"
+    warning:        "palette.semantic.warning"
+    danger:         "palette.semantic.danger"
+    info:           "palette.semantic.info"
+
+# ------------------------------------------------------------
+# Overrides de modo/ambiente — ex.: tema claro.
+# A engine pode mesclar estes valores no runtime.
+# ------------------------------------------------------------
+overrides:
   light:
-    # --- Cores da Paleta ---
-    primary_color: "#1A73E8"
-    secondary_color: "#D48F00"
-    success_color: "#007B57"
-    error_color: "#C53929"
-    warning_color: "#D48F00"
-    info_color: "#1A73E8"
-
-    background_color: "#FFFFFF"
-    foreground_color: "#333333"
-    highlight_color: "#E8E8E8"
-
-    # --- Estilos de Componentes ---
-    styles:
-      base:
-        foreground: "{{.ForegroundColor}}"
-        background: "{{.BackgroundColor}}"
-
-      title:
-        foreground: "{{.PrimaryColor}}"
-        bold: true
-        padding: [0, 0, 1, 0]
-
-      header:
-        foreground: "{{.SecondaryColor}}"
-        bold: true
-        underline: true
-        padding: [0, 1]
-
-      list_item:
-        foreground: "{{.ForegroundColor}}"
-        padding: [0, 2]
-
-      highlight:
-        background: "{{.HighlightColor}}"
-        foreground: "{{.ForegroundColor}}"
-        bold: true
-
-      border:
-        color: "{{.ForegroundColor}}"
-        border_type: "rounded"
+    palette:
+      semantic:
+        bg:          { ansi: "white",        rgb: "#FFFFFF" }
+        surface:     { ansi: "bright_white", rgb: "#F5F7FA" }
+        surface_alt: { ansi: "bright_white", rgb: "#EEF2F7" }
+        text:        { ansi: "black",        rgb: "#0B0B0C" }
+        text_muted:  { ansi: "bright_black", rgb: "#4B5563" }
+        primary:     { ansi: "blue",         rgb: "#3B82F6" }
+        primary_on:  { ansi: "white",        rgb: "#FFFFFF" }

@@ -1,13 +1,14 @@
-// Package interactiveshell
+// Package interactiveshell provides the interactive shell UI for the EasyEnv application.
 package interactiveshell
 
 import (
 	"fmt"
 	"strings"
 
-	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 )
 
 // Msg representa uma mensagem genérica para o loop de Bubble Tea.
@@ -51,7 +52,7 @@ func New(initialCommand string, currentTheme themetemplate.ThemeTemplate) tea.Mo
 		history:        []string{},
 		input:          "",
 		initialCommand: initialCommand,
-		theme:          currentTheme, 
+		theme:          currentTheme,
 	}
 }
 
@@ -71,7 +72,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case Msg:
 		command := string(msg)
 		m.history = append(m.history, fmt.Sprintf("%s%s", m.prompt, command))
-		
+
 		output := processCommand(command)
 		m.history = append(m.history, output)
 
@@ -118,11 +119,11 @@ func (m model) View() string {
 	s.WriteString(m.theme.BaseStyle.Render(welcomeMessage))
 	s.WriteString("\n")
 
-	// Renderiza o histórico de comandos e saídas.
+	// Renderiza o histórico de commands e saídas.
 	for _, line := range m.history {
-		s.WriteString(line)
-		s.WriteString("\n")
-	}
+			s.WriteString(line)
+			s.WriteString("\n")
+		}
 
 	// Renderiza o campo de entrada do usuário com a borda.
 	inputStyle := lipgloss.NewStyle().
@@ -132,7 +133,7 @@ func (m model) View() string {
 
 	// O prompt e o input são renderizados dentro do campo de entrada.
 	inputContent := m.theme.BaseStyle.Render(m.prompt) + m.theme.BaseStyle.Render(m.input)
-	
+
 	// Ajusta a largura para que o input se encaixe bem na tela.
 	width := lipgloss.Width(m.theme.TitleStyle.Render(banner))
 	if width < 80 {
@@ -160,12 +161,12 @@ func processCommand(cmd string) string {
 	if cmd == "" {
 		return ""
 	}
-	return "Comando processado: " + cmd
+	return "Command processado: " + cmd
 }
 
 // Run é o ponto de entrada principal para o shell interativo.
 func Run(args []string, currentTheme themetemplate.ThemeTemplate) error {
-    initialCommand := strings.Join(args, " ")
+	initialCommand := strings.Join(args, " ")
 	p := tea.NewProgram(New(initialCommand, currentTheme))
 	if _, err := p.Run(); err != nil {
 		return err

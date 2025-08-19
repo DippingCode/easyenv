@@ -1,4 +1,4 @@
-// Package usecases
+// Package usecases defines the business logic for preferences.
 package usecases
 
 import (

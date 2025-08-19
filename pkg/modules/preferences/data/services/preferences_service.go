@@ -1,9 +1,10 @@
-// Package services
+// Package services provides data access and persistence for preferences.
 package services
 
 import (
 	"os"
 	"path/filepath"
+
 	"gopkg.in/yaml.v2"
 
 	"github.com/DippingCode/easyenv/pkg/modules/preferences/domain/entities"
@@ -37,6 +38,7 @@ func (s *filePreferencesService) LoadPreferences() (*entities.Preferences, error
 	return &prefs, nil
 }
 
+// SavePreferences salva as preferências do usuário no arquivo de configuração.
 func (s *filePreferencesService) SavePreferences(prefs *entities.Preferences) error {
 	data, err := yaml.Marshal(prefs)
 	if err != nil {
@@ -46,10 +48,10 @@ func (s *filePreferencesService) SavePreferences(prefs *entities.Preferences) er
 	// Garante que o diretório exista antes de salvar.
 	dir := filepath.Dir(s.configPath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return err
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+				return err
+			}
 		}
-	}
 
-	return os.WriteFile(s.configPath, data, 0644)
+		return os.WriteFile(s.configPath, data, 0o600)
 }

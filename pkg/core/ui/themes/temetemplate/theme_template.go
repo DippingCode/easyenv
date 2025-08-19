@@ -1,9 +1,9 @@
-//Package themetemplate
+// Package themetemplate defines the structure for UI themes.
 package themetemplate
 
 import "github.com/charmbracelet/lipgloss"
 
-
+// ThemeTemplate define a estrutura para um tema de UI, incluindo cores e estilos.
 type ThemeTemplate struct {
 	// --- Cores da Paleta ---
 	PrimaryColor   lipgloss.Color
@@ -33,7 +33,7 @@ type ThemeTemplate struct {
 	InfoStyle    lipgloss.Style
 
 	// --- Estilos de UI ---
-	ProgressBar  lipgloss.Style
-	Border       lipgloss.Border
-	BorderColor  lipgloss.Color
+	ProgressBar lipgloss.Style
+	Border      lipgloss.Border
+	BorderColor lipgloss.Color
 }

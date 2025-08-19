@@ -1,9 +1,13 @@
-.PHONY: tidy run build
-tidy:
-	go mod tidy
+GOPATH := $(shell go env GOPATH)
 
-run: tidy
-	go run ./src
+fmt:
+	$(GOPATH)/bin/gofumpt -l -w .
+	$(GOPATH)/bin/gci write -s standard -s default -s prefix\(github.com/DippingCode/easyenv\) .
 
-build: tidy
-	go build -o bin/easyenv ./src
+lint:
+	$(GOPATH)/bin/golangci-lint run
+
+test:
+	go test ./... -race -cover
+
+ci: fmt lint test

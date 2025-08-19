@@ -1,6 +1,5 @@
-// Package themePreference lida com a camada de apresentação do módulo preferences.
-// Inclui a lógica da UI (TUI) e as definições dos comandos Cobra.
-package themePreference
+// Package themepreference provides the UI logic and Cobra command definitions for user preferences.
+package themepreference
 
 import (
 	"fmt"
@@ -16,7 +15,7 @@ import (
 	"github.com/DippingCode/easyenv/pkg/modules/preferences/domain/usecases"
 )
 
-// ShowHelp é uma função utilitária para exibir o help do comando preferences.
+// ShowHelp é uma função utilitária para exibir o help do command preferences.
 func ShowHelp(cmd *cobra.Command) {
 	currentTheme := themes.Dark()
 	p := tea.NewProgram(help.NewModel(helpData, currentTheme))
@@ -31,21 +30,26 @@ type item struct {
 	title, desc, value string
 }
 
-func (i item) Title() string { return i.title }
+// Title retorna o título do item de menu.
+func (i item) Title() string       { return i.title }
+// Description retorna a descrição do item de menu.
 func (i item) Description() string { return i.desc }
+// FilterValue retorna o valor de filtro do item de menu.
 func (i item) FilterValue() string { return i.title }
 
-// model para o menu de temas
+// menuModel para o menu de temas
 type menuModel struct {
-	list    list.Model
-	usecase *usecases.PreferencesUsecase
+	list     list.Model
+	usecase  *usecases.PreferencesUsecase
 	quitting bool
 }
 
+// Init inicializa o modelo do menu.
 func (m menuModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update lida com as mensagens e atualiza o modelo do menu.
 func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -54,18 +58,20 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		if msg.String() == "enter" {
-			selectedItem := m.list.SelectedItem().(item)
-			if selectedItem.value != "" {
-				err := m.usecase.UpdateTheme(selectedItem.value)
-				if err != nil {
-					log.Printf("Erro ao salvar o tema: %v", err)
-					// Exibir erro na UI
-				} else {
-					log.Println("Tema salvo com sucesso!")
-					// Exibir mensagem de sucesso
+			if selected := m.list.SelectedItem(); selected != nil {
+				selectedItem := selected.(item)
+				if selectedItem.value != "" {
+					err := m.usecase.UpdateTheme(selectedItem.value)
+					if err != nil {
+						log.Printf("Erro ao salvar o tema: %v", err)
+						// Exibir erro na UI
+					} else {
+						log.Println("Tema salvo com sucesso!")
+						// Exibir mensagem de sucesso
+					}
+					m.quitting = true
+					return m, tea.Quit
 				}
-				m.quitting = true
-				return m, tea.Quit
 			}
 		}
 	}
@@ -74,6 +80,7 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// View renderiza a visualização do menu.
 func (m menuModel) View() string {
 	if m.quitting {
 		return ""

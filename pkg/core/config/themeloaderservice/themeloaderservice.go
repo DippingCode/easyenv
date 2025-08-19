@@ -1,17 +1,19 @@
-// Package themeloaderservice
+// Package themeloaderservice provides functionality to load and manage UI themes.
 package themeloaderservice
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
-	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 	"github.com/charmbracelet/lipgloss"
 	"gopkg.in/yaml.v2"
+
+	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 )
 
-
+// StyleProperties define as propriedades de estilo para um componente de UI.
 type StyleProperties struct {
 	Foreground  string `yaml:"foreground"`
 	Background  string `yaml:"background"`
@@ -45,14 +47,14 @@ type ThemesConfig struct {
 
 // ThemeLoaderService lida com a lógica de carregar o tema.
 type ThemeLoaderService struct {
-	userConfigPath string
+	userConfigPath   string
 	themesAssetsPath string // Novo campo para o caminho do asset
 }
 
 // NewThemeLoaderService cria um novo serviço de carregamento de temas.
 func NewThemeLoaderService(userConfigPath, themesAssetsPath string) *ThemeLoaderService {
 	return &ThemeLoaderService{
-		userConfigPath: userConfigPath,
+		userConfigPath:   userConfigPath,
 		themesAssetsPath: themesAssetsPath,
 	}
 }
@@ -71,13 +73,15 @@ func (s *ThemeLoaderService) LoadTheme() (themetemplate.ThemeTemplate, error) {
 	// Passo 2: Definir qual arquivo de tema carregar.
 	themeToLoad := "dark" // Tema padrão
 	if userPrefs.Theme != "" {
-		themeToLoad = userPrefs.Theme
+		// Basic validation to prevent path traversal
+		if !strings.ContainsAny(userPrefs.Theme, "/\\..") {
+			themeToLoad = userPrefs.Theme
+		}
 	}
 
 	// Tentar carregar o tema de um arquivo customizado.
-	themeFilePath := filepath.Join(filepath.Dir(s.userConfigPath), themeToLoad + ".yml")
+	themeFilePath := filepath.Join(filepath.Dir(s.userConfigPath), themeToLoad+".yml")
 	themesData, err := os.ReadFile(themeFilePath)
-	
 	// Se o arquivo customizado não existir, usar o template padrão.
 	if err != nil {
 		themesData, err = os.ReadFile(s.themesAssetsPath)
@@ -85,7 +89,7 @@ func (s *ThemeLoaderService) LoadTheme() (themetemplate.ThemeTemplate, error) {
 			return themetemplate.ThemeTemplate{}, fmt.Errorf("erro fatal: o arquivo de temas padrao nao foi encontrado em %s: %w", s.themesAssetsPath, err)
 		}
 	}
-	
+
 	// Passo 3: Decodificar os dados do tema.
 	var themesConfig ThemesConfig
 	if err := yaml.Unmarshal(themesData, &themesConfig); err != nil {
@@ -111,8 +115,8 @@ func (s *ThemeLoaderService) LoadTheme() (themetemplate.ThemeTemplate, error) {
 		ForegroundColor: lipgloss.Color(themeData.ForegroundColor),
 		HighlightColor:  lipgloss.Color(themeData.HighlightColor),
 	}
-	
+
 	// A lógica para converter as StyleProperties para lipgloss.Style viria aqui.
-	
+
 	return finalTheme, nil
 }

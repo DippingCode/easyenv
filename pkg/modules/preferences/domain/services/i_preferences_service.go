@@ -1,4 +1,4 @@
-//Package services
+// Package services defines interfaces for preference-related operations.
 package services
 
 import "github.com/DippingCode/easyenv/pkg/modules/preferences/domain/entities"

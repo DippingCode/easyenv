@@ -1,23 +1,25 @@
-// Package themes
+// Package themes provides predefined UI themes for the application.
 package themes
 
 import (
-	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 	"github.com/charmbracelet/lipgloss"
+
+	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
 )
 
+// Light retorna um ThemeTemplate com as cores e estilos do tema claro.
 func Light() themetemplate.ThemeTemplate {
 	// Definição das cores para o tema claro.
 	const (
-		primaryLight    = lipgloss.Color("#1A73E8")
-		secondaryLight  = lipgloss.Color("#D48F00")
-		successLight    = lipgloss.Color("#007B57")
-		errorLight      = lipgloss.Color("#C53929")
-		warningLight    = lipgloss.Color("#D48F00")
-		infoLight       = lipgloss.Color("#1A73E8")
-		bgLight         = lipgloss.Color("#FFFFFF")
-		fgLight         = lipgloss.Color("#333333")
-		highlightLightBG= lipgloss.Color("#F0F0F0")
+		primaryLight     = lipgloss.Color("#1A73E8")
+		secondaryLight   = lipgloss.Color("#D48F00")
+		successLight     = lipgloss.Color("#007B57")
+		errorLight       = lipgloss.Color("#C53929")
+		warningLight     = lipgloss.Color("#D48F00")
+		infoLight        = lipgloss.Color("#1A73E8")
+		bgLight          = lipgloss.Color("#FFFFFF")
+		fgLight          = lipgloss.Color("#333333")
+		highlightLightBG = lipgloss.Color("#F0F0F0")
 	)
 
 	t := themetemplate.ThemeTemplate{

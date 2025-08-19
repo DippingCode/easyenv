@@ -14,41 +14,42 @@ const (
 	// Row arranges components horizontally.
 	Row Direction = iota // Horizontal layout
 	// Col arranges components vertically.
-	Col                  // Vertical layout
+	Col
 )
 
-// Layout represents a container component that arranges its children.
+// Layout holds children and a direction to render them.
 type Layout struct {
-	Children  []interfaces.Component
 	Direction Direction
+	Children  []interfaces.Component
 }
 
-// NewLayout creates a new Layout component.
-func NewLayout(direction Direction, children ...interfaces.Component) *Layout {
-	return &Layout{
-		Children:  children,
-		Direction: direction,
-	}
+// New creates a new Layout.
+func New(dir Direction) *Layout {
+	return &Layout{Direction: dir, Children: make([]interfaces.Component, 0, 4)}
 }
 
-// AddChild adds a component to the layout.
-func (l *Layout) AddChild(child interfaces.Component) {
-	l.Children = append(l.Children, child)
+// AddChild appends a component.
+func (l *Layout) AddChild(c interfaces.Component) *Layout {
+	l.Children = append(l.Children, c)
+	return l
 }
 
-// Render returns the string representation of the Layout component.
+// Render renders children joined by space (row) or newline (col).
 func (l *Layout) Render() string {
-	var renderedChildren []string
+	if len(l.Children) == 0 {
+		return ""
+	}
+
+	renderedChildren := make([]string, 0, len(l.Children))
 	for _, child := range l.Children {
 		renderedChildren = append(renderedChildren, child.Render())
 	}
 
 	if l.Direction == Row {
-		return strings.Join(renderedChildren, " ") // Join with space for horizontal
-	} else if l.Direction == Col {
-		return strings.Join(renderedChildren, "\n") // Join with newline for vertical
+		return strings.Join(renderedChildren, " ")
 	}
-	return ""
+	// default: Col
+	return strings.Join(renderedChildren, "\n")
 }
 
 // Ensure Layout implements the interfaces.Component interface.

@@ -10,7 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/DippingCode/easyenv/pkg/core/ui/help"
+	"github.com/DippingCode/easyenv/pkg/core/ui/templates/help"
 	"github.com/DippingCode/easyenv/pkg/core/ui/themes"
 	"github.com/DippingCode/easyenv/pkg/modules/preferences/domain/usecases"
 )

@@ -3,6 +3,25 @@ Todas as alterações notáveis neste projeto serão documentadas aqui.
 
 ## Versions
 
+#### [0.0.2] - 2025-08-19
+
+###### Added
+- feat(tui): Implement the core architecture for the interactive TUI (Shell, Scaffold).
+- feat(tui): Add main layout components: AppBar, NavBar, BottomBar, and ViewBox.
+- feat(tui): Implement the initial Home screen as the default application view.
+- feat(tui): Add application exit functionality via Ctrl+C and double Esc.
+
+###### Changed
+- refactor(cli): The main command `eye` now launches the interactive TUI instead of a simple command runner.
+
+###### Build Details
+- Build: 29
+- Tag: v0.0.2+29
+- Commit: feat(tui): implement interactive user interface
+
+---
+
+
 #### [0.0.2] - 2025-08-18
 
 ###### Changed

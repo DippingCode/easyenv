@@ -1,52 +1,132 @@
-// Package scaffold provides a basic UI layout structure for the application.
 package scaffold
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/appbar"
+	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/bottombar"
+	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/navbar"
+	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/viewbox"
+	"github.com/DippingCode/easyenv/pkg/modules/home/presenter"
 
-	themetemplate "github.com/DippingCode/easyenv/pkg/core/ui/themes/temetemplate"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
-// Widget é uma interface para qualquer componente visual declarativo.
-// Qualquer struct que implementa um método View() pode ser um Widget.
-type Widget interface {
-	View() string
+// Model is the scaffold for the entire application UI.
+// It manages the layout and the child components.
+type Model struct {
+	width, height int
+
+	AppBar    appbar.Model
+	NavBar    navbar.Model
+	BottomBar bottombar.Model
+	ViewBox   viewbox.ViewBox
 }
 
-// Scaffold é o widget raiz que define o layout básico da tela.
-type Scaffold struct {
-	Theme themetemplate.ThemeTemplate
-	Child Widget
-}
-
-// NewScaffold cria um novo Scaffold com um tema e um widget filho.
-func NewScaffold(t themetemplate.ThemeTemplate, child Widget) Scaffold {
-	return Scaffold{
-		Theme: t,
-		Child: child,
+// New creates a new scaffold model.
+func New() Model {
+	return Model{
+		AppBar:    appbar.New(),
+		NavBar:    navbar.New(),
+		BottomBar: bottombar.New(),
+		// The initial screen is the Home screen.
+		ViewBox: presenter.New(),
 	}
 }
 
-// View renderiza a representação visual do Scaffold, incluindo o filho.
-func (s Scaffold) View() string {
-	// Define a largura da tela. Vamos usar uma largura fixa por simplicidade.
-	// Em um aplicativo real, você usaria lipgloss.Width() ou um valor dinâmico.
-	const fullWidth = 80
+func (m Model) Init() tea.Cmd {
+	// We can initialize child components here if needed
+	return nil
+}
 
-	// A barra de status, usando o estilo do tema.
-	statusBar := lipgloss.NewStyle().
-		Background(s.Theme.HeaderStyle.GetBackground()).
-		Foreground(s.Theme.HeaderStyle.GetForeground()).
-		Width(fullWidth).
-		Padding(0, 2).
-		Render("Status Bar: OK")
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	var ( 
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
 
-	// O corpo principal, que contém o widget filho.
-	// A magia da composição acontece aqui.
-	body := lipgloss.NewStyle().
-		Width(fullWidth).
-		Render(s.Child.View())
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+	}
 
-	// Usa JoinVertical para montar o layout final.
-	return lipgloss.JoinVertical(lipgloss.Top, body, statusBar)
+	// Pass messages to children. Note: In a real app, we'd manage focus
+	// and only send messages to the focused component.
+	m.AppBar, cmd = m.AppBar.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.NavBar, cmd = m.NavBar.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.BottomBar, cmd = m.BottomBar.Update(msg)
+	cmds = append(cmds, cmd)
+
+	// The tea.Model returned from a child update is a generic tea.Model,
+	// so we need to type-assert it back to its concrete type.
+	newViewBoxModel, cmd := m.ViewBox.Update(msg)
+	m.ViewBox = newViewBoxModel.(viewbox.ViewBox)
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m Model) View() string {
+	if m.width == 0 || m.height == 0 {
+		return "Initializing..."
+	}
+
+	// App bar takes up a fixed height, e.g., 3 lines.
+	appBarHeight := 3
+	// Bottom bar takes up a fixed height, e.g., 3 lines.
+	bottomBarHeight := 3
+
+	// The remaining height is for the main content.
+	mainContentHeight := m.height - appBarHeight - bottomBarHeight
+
+	// NavBar takes up a fixed width, e.g., 20 characters.
+	navBarWidth := 20
+	// The remaining width is for the ViewBox.
+	viewBoxWidth := m.width - navBarWidth
+
+	// --- STYLING --- //
+	appBarStyle := lipgloss.NewStyle().
+		Width(m.width).
+		Height(appBarHeight).
+		Background(lipgloss.Color("#511a96"))
+
+	navBarStyle := lipgloss.NewStyle().
+		Width(navBarWidth).
+		Height(mainContentHeight).
+		Background(lipgloss.Color("#3a136d"))
+
+	viewBoxStyle := lipgloss.NewStyle().
+		Width(viewBoxWidth).
+		Height(mainContentHeight).
+		Background(lipgloss.Color("#290d4e"))
+
+	bottomBarStyle := lipgloss.NewStyle().
+		Width(m.width).
+		Height(bottomBarHeight).
+		Background(lipgloss.Color("#511a96"))
+
+	// --- RENDER --- //
+	appBarView := appBarStyle.Render(m.AppBar.View())
+	navBarView := navBarStyle.Render(m.NavBar.View())
+	viewBoxView := viewBoxStyle.Render(m.ViewBox.View())
+	bottomBarView := bottomBarStyle.Render(m.BottomBar.View())
+
+	// Join NavBar and ViewBox horizontally.
+	mainContent := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		navBarView,
+		viewBoxView,
+	)
+
+	// Join all parts vertically.
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		appBarView,
+		mainContent,
+		bottomBarView,
+	)
 }

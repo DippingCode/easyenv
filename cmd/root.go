@@ -3,60 +3,39 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/user"
-	"path/filepath"
 
+	"github.com/DippingCode/easyenv/pkg/core/ui/shell"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-
-	// Importações dos roteadores
-	"github.com/DippingCode/easyenv/pkg/core/config/themeloaderservice"
-	interactiveshell "github.com/DippingCode/easyenv/pkg/modules/interactiveshell/presenter"
-	"github.com/DippingCode/easyenv/pkg/modules/preferences"
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "eye",
-	Short: "Gerencia seu ambiente de desenvolvimento.",
-	Long:  `O CLI do EasyEnv.io. Digite 'exit' para sair.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		// Passo 1: Obter os caminhos dos arquivos.
-		currentUser, err := user.Current()
-		if err != nil {
-			fmt.Println("Erro ao obter o diretório do usuário:", err)
-			os.Exit(1)
-		}
-		userConfigPath := filepath.Join(currentUser.HomeDir, ".easyenv", "config.yml")
-		themesAssetsPath := "assets/themes/template.yml"
+	Short: "EasyEnv.io - Gerenciador de ambiente de desenvolvimento",
+	Long:  `A TUI interativa para gerenciar seus ambientes de desenvolvimento.`,
+	// We use RunE to handle errors returned from the TUI.
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// TODO: Implement theme loading and pass it to the shell.
 
-		// Passo 2: Instanciar e usar o serviço de carregamento de temas.
-		themeLoader := themeloaderservice.NewThemeLoaderService(userConfigPath, themesAssetsPath)
-		currentTheme, err := themeLoader.LoadTheme()
-		if err != nil {
-			fmt.Println("Erro ao carregar o tema:", err)
-			os.Exit(1)
+		// Create the root model.
+		appShell := shell.New()
+
+		// Create and run the bubbletea program.
+		p := tea.NewProgram(appShell, tea.WithAltScreen(), tea.WithMouseCellMotion())
+
+		if _, err := p.Run(); err != nil {
+			// If there's an error, we'll print it to the console.
+			return fmt.Errorf("erro ao executar a aplicação: %w", err)
 		}
 
-		// Passo 3: Passar o tema carregado para a função de execução do interactive_shell.
-		// AQUI ESTÁ A CORREÇÃO: a variável 'currentTheme' é passada como argumento.
-		if err := interactiveshell.Run(args, currentTheme); err != nil {
-			fmt.Println("Erro ao executar o shell interativo:", err)
-			os.Exit(1)
-		}
+		return nil
 	},
 }
 
-// init() do Cobra para registrar subcomandos.
-func init() {
-	// Apenas para que o Cobra reconheça os commands,
-	// mas a execução será gerenciada internamente pelo shell.
-	rootCmd.AddCommand(preferences.GetRouter())
-	// rootCmd.AddCommand(version.GetRouter())
-}
-
-// Execute adiciona todos os commands filhos ao command raiz
+// Execute is the main entry point for the cobra CLI.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		// Cobra already prints the error, so we just exit.
 		os.Exit(1)
 	}
 }

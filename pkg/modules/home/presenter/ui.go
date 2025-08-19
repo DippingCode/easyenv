@@ -8,7 +8,6 @@ import (
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/scaffold"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/viewbox"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // Ensure HomeView implements the ViewBox interface.
@@ -37,10 +36,10 @@ func New() *HomeView {
 		scaffold.WithContainerBox(containerBox),
 
 		// Styling
-		scaffold.WithMargin(1),
-		//scaffold.WithNavBarBackgroundColor(lipgloss.Color("#4D4D4D")),
-		scaffold.WithBackgroundColor(lipgloss.Color("#550a0aff")),
-		scaffold.WithcontainerBoxBackgroundColor(lipgloss.Color("#3D3D3D")),
+		//scaffold.WithMargin(1),
+		scaffold.WithBackgroundColor("#0F0F0F"),
+		scaffold.WithAppBarBackgroundColor("#202020"),
+		scaffold.WithContainerBoxBackgroundColor("#5DD62C"),
 	)
 
 	return &HomeView{

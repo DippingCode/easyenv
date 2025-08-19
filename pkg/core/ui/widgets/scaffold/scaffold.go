@@ -95,24 +95,24 @@ func WithPadding(p ...int) Option {
 	}
 }
 
-func WithBackgroundColor(c lipgloss.Color) Option {
-	return func(m *Model) { m.containerStyle = m.containerStyle.Background(c) }
+func WithBackgroundColor(c string) Option {
+	return func(m *Model) { m.containerStyle = m.containerStyle.Background(lipgloss.Color(c)) }
 }
 
-func WithAppBarBackgroundColor(c lipgloss.Color) Option {
-	return func(m *Model) { m.appBarStyle = m.appBarStyle.Background(c) }
+func WithAppBarBackgroundColor(c string) Option {
+	return func(m *Model) { m.appBarStyle = m.appBarStyle.Background(lipgloss.Color(c)) }
 }
 
-func WithNavBarBackgroundColor(c lipgloss.Color) Option {
-	return func(m *Model) { m.navBarStyle = m.navBarStyle.Background(c) }
+func WithNavBarBackgroundColor(c string) Option {
+	return func(m *Model) { m.navBarStyle = m.navBarStyle.Background(lipgloss.Color(c)) }
 }
 
-func WithBottomBarBackgroundColor(c lipgloss.Color) Option {
-	return func(m *Model) { m.bottomBarStyle = m.bottomBarStyle.Background(c) }
+func WithBottomBarBackgroundColor(c string) Option {
+	return func(m *Model) { m.bottomBarStyle = m.bottomBarStyle.Background(lipgloss.Color(c)) }
 }
 
-func WithcontainerBoxBackgroundColor(c lipgloss.Color) Option {
-	return func(m *Model) { m.containerboxStyle = m.containerboxStyle.Background(c) }
+func WithContainerBoxBackgroundColor(c string) Option {
+	return func(m *Model) { m.containerboxStyle = m.containerboxStyle.Background(lipgloss.Color(c)) }
 }
 
 // --- SIZING OPTIONS ---

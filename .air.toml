@@ -1,0 +1,25 @@
+# Config file for air: https://github.com/cosmtrek/air
+
+# Working directory
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Command to build the app
+cmd = "go build -o ./tmp/eye ./cmd"
+# The binary to run
+bin = "./tmp/eye"
+# Watch these file extensions
+include_ext = ["go"]
+# Ignore these directories
+exclude_dir = ["assets", "tmp", "vendor"]
+# Log file for build errors
+log = "air-build.log"
+
+[log]
+# Show log time
+time = true
+
+[misc]
+# Delete tmp directory on exit
+clean_on_exit = true

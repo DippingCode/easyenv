@@ -1,0 +1,180 @@
+meta: { name: "material-light", version: 1, description: "Material 3 • Light", author: "you", charset_priority: ["unicode","ascii"] }
+
+palette:
+  ansi:
+    black: { fg: 0, bg: 0 } ; red: { fg: 1, bg: 1 } ; green: { fg: 2, bg: 2 } ; yellow: { fg: 3, bg: 3 }
+    blue: { fg: 4, bg: 4 } ; magenta: { fg: 5, bg: 5 } ; cyan: { fg: 6, bg: 6 } ; white: { fg: 7, bg: 7 }
+    bright_black: { fg: 8, bg: 8 } ; bright_red: { fg: 9, bg: 9 } ; bright_green: { fg: 10, bg: 10 } ; bright_yellow: { fg: 11, bg: 11 }
+    bright_blue: { fg: 12, bg: 12 } ; bright_magenta: { fg: 13, bg: 13 } ; bright_cyan: { fg: 14, bg: 14 } ; bright_white: { fg: 15, bg: 15 }
+
+  semantic:
+    background:     { rgb: "#FFFFFF" }
+    bg:             { rgb: "#FFFFFF" }
+    surface:        { rgb: "#F5F5F5" }    # surface
+    surface_alt:    { rgb: "#EEEEF1" }    # container
+    outline:        { rgb: "#CAC4D0" }
+    text:           { rgb: "#1D1B20" }    # on-surface
+    text_muted:     { rgb: "#49454F" }    # on-surface-variant
+    primary:        { rgb: "#6750A4" }    # roxo/indigo M3
+    primary_on:     { rgb: "#FFFFFF" }
+    primary_container: { rgb: "#EADDFF" }
+    on_primary_container: { rgb: "#21005D" }
+
+    secondary:      { rgb: "#625B71" }
+    on_secondary:   { rgb: "#FFFFFF" }
+    error:          { rgb: "#B3261E" }
+    danger:         { rgb: "#B3261E" }
+    success:        { rgb: "#1FAF58" }
+    warning:        { rgb: "#B98000" }
+    info:           { rgb: "#00677D" }
+
+  state:
+    focus:
+      border: { color: { rgb: "#6750A4" }, style: ["bold"] }
+      text:   { color: { rgb: "#1D1B20" } }
+      bg:     { color: { rgb: "#EDEAF3" } }
+      effect: "reverse"
+    hover:
+      border: { color: { rgb: "#E0E0E0" } }
+      bg:     { color: { rgb: "#FAFAFA" } }
+    active: { effect: "reverse" }
+    disabled:
+      text:   { color: { rgb: "#9E9E9E" } }
+      border: { color: { rgb: "#E0E0E0" } }
+
+typography:
+  scale:
+    h1: { line: 2, style: ["bold"] }
+    h2: { line: 2, style: ["bold"] }
+    h3: { line: 1, style: ["bold"] }
+    h4: { line: 1, style: ["bold"] }
+    h5: { line: 1, style: [] }
+    h6: { line: 1, style: ["dim"] }
+    title: { line: 1, style: ["bold"] }
+    body:  { line: 1, style: [] }
+    label: { line: 1, style: ["italic"] }
+    code:  { line: 1, style: [] }
+  colors:
+    default: { color: { rgb: "#1D1B20" } }
+    muted:   { color: { rgb: "#49454F" } }
+    inverse: { color: { rgb: "#FFFFFF" }, bg: { rgb: "#1D1B20" } }
+    success: { color: { rgb: "#1FAF58" } }
+    warning: { color: { rgb: "#B98000" } }
+    danger:  { color: { rgb: "#B3261E" } }
+    link:    { color: { rgb: "#6750A4" }, style: ["underline"] }
+
+spacing:
+  unit: 1
+  inset: { xs: 0, sm: 1, md: 2, lg: 3, xl: 4 }
+  gap:   { xs: 0, sm: 1, md: 2, lg: 3, xl: 4 }
+
+radii: { none: 0, sm: 1, md: 1, lg: 1 }
+
+borders:
+  sets:
+    ascii_single:
+      h: "-" ; v: "|" ; tl: "+" ; tr: "+" ; bl: "+" ; br: "+" ; tee_t: "+" ; tee_b: "+" ; tee_l: "+" ; tee_r: "+" ; cross: "+"
+    unicode_light:
+      h: "─" ; v: "│" ; tl: "┌" ; tr: "┐" ; bl: "└" ; br: "┘" ; tee_t: "┬" ; tee_b: "┴" ; tee_l: "├" ; tee_r: "┤" ; cross: "┼"
+    unicode_rounded:
+      h: "─" ; v: "│" ; tl: "╭" ; tr: "╮" ; bl: "╰" ; br: "╯" ; tee_t: "┬" ; tee_b: "┴" ; tee_l: "├" ; tee_r: "┤" ; cross: "┼"
+  tokens:
+    none:   { set: "ascii_single",    color: { rgb: "#E0E0E0" }, width: 0 }
+    thin:   { set: "unicode_light",   color: { rgb: "#D1D5DB" }, width: 1 }
+    round:  { set: "unicode_rounded", color: { rgb: "#D1D5DB" }, width: 1 }
+    focus:  { set: "unicode_light",   color: { rgb: "#6750A4" }, width: 1, style: ["bold"] }
+    danger: { set: "unicode_light",   color: { rgb: "#B3261E" }, width: 1 }
+
+elevation:
+  none:   { shadow_bg: null, offset: [0,0] }
+  low:    { shadow_bg: { rgb: "#000000", alpha: 0.08 }, offset: [1,1] }
+  medium: { shadow_bg: { rgb: "#000000", alpha: 0.12 }, offset: [1,1] }
+  high:   { shadow_bg: { rgb: "#000000", alpha: 0.16 }, offset: [1,2] }
+
+effects:
+  focus:   ["reverse"]
+  hovered: []
+  pressed: ["reverse"]
+  disabled:["dim"]
+
+components:
+  BoardBox: { bg: { rgb: "#FFFFFF" }, padding: { x: 0, y: 0 } }
+  Box:
+    layout: { default: "column", gap: { x: 1, y: 0 } }
+    padding_token: "sm"
+    bg: { rgb: "#F5F5F5" }
+    border_token: "none"
+  CardBox:
+    bg: { rgb: "#FFFFFF" }
+    border_token: "thin"   # outlined
+    padding_token: "md"
+    elevation: "low"       # elevated
+    title: { typographic: "h5", color: { rgb: "#1D1B20" } }
+  TextBox:
+    padding_token: "xs"
+    default_color: { rgb: "#1D1B20" }
+    default_type: "body"
+    wrap: true
+    ellipsis: "…"
+  Text:
+    variants:
+      h1: { type: "h1", color: { rgb: "#1D1B20" }, style: ["bold"] }
+      h2: { type: "h2", color: { rgb: "#1D1B20" }, style: ["bold"] }
+      h3: { type: "h3", color: { rgb: "#1D1B20" }, style: ["bold"] }
+      h4: { type: "h4", color: { rgb: "#1D1B20" }, style: ["bold"] }
+      h5: { type: "h5", color: { rgb: "#1D1B20" }, style: [] }
+      h6: { type: "h6", color: { rgb: "#49454F" }, style: [] }
+      title: { type: "title", color: { rgb: "#1D1B20" }, style: ["bold"] }
+      body:  { type: "body",  color: { rgb: "#1D1B20" }, style: [] }
+      label: { type: "label", color: { rgb: "#49454F" }, style: ["italic"] }
+      code:  { type: "code",  color: { rgb: "#00677D" }, style: [] }
+    links: { color: { rgb: "#6750A4" }, style: ["underline"] }
+  Button:
+    base:
+      padding_token: "sm"
+      border_token: "thin"
+      align: "center"
+      min_width: 8
+      states:
+        default: { fg: { rgb: "#FFFFFF" }, bg: { rgb: "#6750A4" } }   # Filled
+        hover:   { fg: { rgb: "#FFFFFF" }, bg: { rgb: "#745EB1" } }
+        focus:   { effect: "reverse", border_token: "focus" }
+        active:  { effect: "reverse" }
+        disabled:{ fg: { rgb: "#9E9E9E" }, bg: { rgb: "#E0E0E0" }, effect: "dim" }
+    variants:
+      tonal:
+        states:
+          default: { fg: { rgb: "#21005D" }, bg: { rgb: "#EADDFF" } }
+      outlined:
+        base: { border_token: "thin" }
+        states:
+          default: { fg: { rgb: "#1D1B20" }, bg: null }
+          hover:   { fg: { rgb: "#1D1B20" }, bg: { rgb: "#F5F5F5" } }
+      text:
+        base: { border_token: "none" }
+        states:
+          default: { fg: { rgb: "#6750A4" }, bg: null }
+          hover:   { fg: { rgb: "#745EB1" }, bg: { rgb: "#F5F5F5" } }
+  Input:
+    padding_token: "sm"
+    border_token: "thin"
+    bg: { rgb: "#FFFFFF" }
+    placeholder: { color: { rgb: "#49454F" }, style: ["dim"] }
+    caret: { color: { rgb: "#6750A4" } }
+    states:
+      default: { fg: { rgb: "#1D1B20" }, bg: { rgb: "#FFFFFF" } }  # filled
+      focus:   { border_token: "focus" }
+      disabled:{ fg: { rgb: "#9E9E9E" },  bg: { rgb: "#F5F5F5" } }
+      error:   { border_token: "danger", fg: { rgb: "#B3261E" } }
+  List:
+    padding_token: "xs"
+    border_token: "none"
+    item:
+      normal:   { fg: { rgb: "#1D1B20" } }
+      muted:    { fg: { rgb: "#49454F" } }
+      selected: { effect: "reverse", fg: { rgb: "#1D1B20" }, bg: { rgb: "#F5F5F5" } }
+      focus:    { border_token: "focus" }
+    scrollbar:
+      enabled: true
+      track: { char: "░", color: { rgb: "#D1D5DB" } }
+      thumb: { char: "▒", color: { rgb: "#6750A4" } }

@@ -1,26 +1,28 @@
 package shell
 
 import (
-	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/scaffold"
+	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/viewbox"
+	"github.com/DippingCode/easyenv/pkg/modules/home/presenter"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 // Shell is the root model of the application.
+// It holds the active screen (ViewBox) and handles global commands.
 type Shell struct {
-	scaffold       scaffold.Model
+	activeViewBox  viewbox.ViewBox
 	escPressedOnce bool
 }
 
-// New creates a new shell.
+// New creates a new shell, initializing the home screen as the active view.
 func New() Shell {
 	return Shell{
-		scaffold:       scaffold.New(),
+		activeViewBox:  presenter.New(),
 		escPressedOnce: false,
 	}
 }
 
 func (s Shell) Init() tea.Cmd {
-	return s.scaffold.Init()
+	return s.activeViewBox.Init()
 }
 
 func (s Shell) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -35,21 +37,20 @@ func (s Shell) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return s, tea.Quit
 			}
 			s.escPressedOnce = true
-			// We don't pass the Esc message down, but we don't quit yet.
 			return s, nil
 		}
 	}
 
-	// If we received any other message, reset the esc counter.
 	s.escPressedOnce = false
 
-	// Delegate the message to the scaffold.
+	// Delegate the message to the active screen.
 	var cmd tea.Cmd
-	newScaffold, cmd := s.scaffold.Update(msg)
-	s.scaffold = newScaffold
+	newViewBox, cmd := s.activeViewBox.Update(msg)
+	s.activeViewBox = newViewBox.(viewbox.ViewBox)
 	return s, cmd
 }
 
 func (s Shell) View() string {
-	return s.scaffold.View()
+	// The shell's view is simply the view of the active screen.
+	return s.activeViewBox.View()
 }

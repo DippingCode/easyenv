@@ -3,130 +3,225 @@ package scaffold
 import (
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/appbar"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/bottombar"
+	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/containerbox"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/navbar"
-	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/viewbox"
-	"github.com/DippingCode/easyenv/pkg/modules/home/presenter"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Option is a functional option for configuring the Scaffold.
+type Option func(*Model)
+
 // Model is the scaffold for the entire application UI.
-// It manages the layout and the child components.
 type Model struct {
 	width, height int
 
-	AppBar    appbar.Model
-	NavBar    navbar.Model
-	BottomBar bottombar.Model
-	ViewBox   viewbox.ViewBox
+	// Components are now pointers, so they can be nil (optional).
+	AppBar    *appbar.Model
+	NavBar    *navbar.Model
+	BottomBar *bottombar.Model
+	ContainerBox  *containerbox.Model
+
+	// Styling & Sizing
+	marginStyle      lipgloss.Style
+	containerStyle   lipgloss.Style
+	appBarStyle      lipgloss.Style
+	navBarStyle      lipgloss.Style
+	bottomBarStyle   lipgloss.Style
+	containerboxStyle     lipgloss.Style
+	appBarHeight     int
+	navBarWidth      int
+	bottomBarHeight  int
 }
 
-// New creates a new scaffold model.
-func New() Model {
-	return Model{
-		AppBar:    appbar.New(),
-		NavBar:    navbar.New(),
-		BottomBar: bottombar.New(),
-		// The initial screen is the Home screen.
-		ViewBox: presenter.New(),
+// New creates a new scaffold model with the given options.
+func New(opts ...Option) Model {
+	m := Model{
+		marginStyle:     lipgloss.NewStyle(),
+		containerStyle:  lipgloss.NewStyle(),
+		appBarStyle:     lipgloss.NewStyle(),
+		navBarStyle:     lipgloss.NewStyle(),
+		bottomBarStyle:  lipgloss.NewStyle(),
+		containerboxStyle:    lipgloss.NewStyle(),
+	}
+
+	for _, opt := range opts {
+		opt(&m)
+	}
+
+	return m
+}
+
+// --- COMPONENT OPTIONS ---
+
+func WithAppBar(appBar appbar.Model) Option {
+	return func(m *Model) { m.AppBar = &appBar }
+}
+
+func WithNavBar(navBar navbar.Model) Option {
+	return func(m *Model) { m.NavBar = &navBar }
+}
+
+func WithBottomBar(bottomBar bottombar.Model) Option {
+	return func(m *Model) { m.BottomBar = &bottomBar }
+}
+
+func WithContainerBox(containerbox containerbox.Model) Option {
+	return func(m *Model) { m.ContainerBox = &containerbox }
+}
+
+// --- STYLING OPTIONS ---
+
+func WithMargin(m ...int) Option {
+	return func(model *Model) {
+		switch len(m) {
+		case 1: model.marginStyle = model.marginStyle.Margin(m[0])
+		case 2: model.marginStyle = model.marginStyle.Margin(m[0], m[1])
+		case 3: model.marginStyle = model.marginStyle.Margin(m[0], m[1], m[2])
+		case 4: model.marginStyle = model.marginStyle.Margin(m[0], m[1], m[2], m[3])
+		}
 	}
 }
 
-func (m Model) Init() tea.Cmd {
-	// We can initialize child components here if needed
+func WithPadding(p ...int) Option {
+	return func(model *Model) {
+		switch len(p) {
+		case 1: model.containerStyle = model.containerStyle.Padding(p[0])
+		case 2: model.containerStyle = model.containerStyle.Padding(p[0], p[1])
+		case 3: model.containerStyle = model.containerStyle.Padding(p[0], p[1], p[2])
+		case 4: model.containerStyle = model.containerStyle.Padding(p[0], p[1], p[2], p[3])
+		}
+	}
+}
+
+func WithBackgroundColor(c lipgloss.Color) Option {
+	return func(m *Model) { m.containerStyle = m.containerStyle.Background(c) }
+}
+
+func WithAppBarBackgroundColor(c lipgloss.Color) Option {
+	return func(m *Model) { m.appBarStyle = m.appBarStyle.Background(c) }
+}
+
+func WithNavBarBackgroundColor(c lipgloss.Color) Option {
+	return func(m *Model) { m.navBarStyle = m.navBarStyle.Background(c) }
+}
+
+func WithBottomBarBackgroundColor(c lipgloss.Color) Option {
+	return func(m *Model) { m.bottomBarStyle = m.bottomBarStyle.Background(c) }
+}
+
+func WithcontainerBoxBackgroundColor(c lipgloss.Color) Option {
+	return func(m *Model) { m.containerboxStyle = m.containerboxStyle.Background(c) }
+}
+
+// --- SIZING OPTIONS ---
+
+func WithAppBarHeight(h int) Option {
+	return func(m *Model) { m.appBarHeight = h }
+}
+
+func WithNavBarWidth(w int) Option {
+	return func(m *Model) { m.navBarWidth = w }
+}
+
+func WithBottomBarHeight(h int) Option {
+	return func(m *Model) { m.bottomBarHeight = h }
+}
+
+func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	var ( 
+func (m *Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
 	)
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		hMargin, vMargin := m.marginStyle.GetFrameSize()
+		hPadding, vPadding := m.containerStyle.GetFrameSize()
+		m.width = msg.Width - hMargin - hPadding
+		m.height = msg.Height - vMargin - vPadding
 	}
 
-	// Pass messages to children. Note: In a real app, we'd manage focus
-	// and only send messages to the focused component.
-	m.AppBar, cmd = m.AppBar.Update(msg)
-	cmds = append(cmds, cmd)
+	if m.AppBar != nil {
+		var updatedAppBar appbar.Model
+		updatedAppBar, cmd = m.AppBar.Update(msg)
+		*m.AppBar = updatedAppBar
+		cmds = append(cmds, cmd)
+	}
+	if m.NavBar != nil {
+		var updatedNavBar navbar.Model
+		updatedNavBar, cmd = m.NavBar.Update(msg)
+		*m.NavBar = updatedNavBar
+		cmds = append(cmds, cmd)
+	}
+	if m.BottomBar != nil {
+		var updatedBottomBar bottombar.Model
+		updatedBottomBar, cmd = m.BottomBar.Update(msg)
+		*m.BottomBar = updatedBottomBar
+		cmds = append(cmds, cmd)
+	}
 
-	m.NavBar, cmd = m.NavBar.Update(msg)
-	cmds = append(cmds, cmd)
-
-	m.BottomBar, cmd = m.BottomBar.Update(msg)
-	cmds = append(cmds, cmd)
-
-	// The tea.Model returned from a child update is a generic tea.Model,
-	// so we need to type-assert it back to its concrete type.
-	newViewBoxModel, cmd := m.ViewBox.Update(msg)
-	m.ViewBox = newViewBoxModel.(viewbox.ViewBox)
-	cmds = append(cmds, cmd)
-
-	return m, tea.Batch(cmds...)
+	return *m, tea.Batch(cmds...)
 }
 
-func (m Model) View() string {
-	if m.width == 0 || m.height == 0 {
+func (m *Model) View() string {
+	if m.width <= 0 || m.height <= 0 {
 		return "Initializing..."
 	}
 
-	// App bar takes up a fixed height, e.g., 3 lines.
-	appBarHeight := 3
-	// Bottom bar takes up a fixed height, e.g., 3 lines.
-	bottomBarHeight := 3
+	appBarHeight := 0
+	if m.AppBar != nil {
+		appBarHeight = m.appBarHeight
+		if appBarHeight == 0 { appBarHeight = 3 }
+	}
 
-	// The remaining height is for the main content.
-	mainContentHeight := m.height - appBarHeight - bottomBarHeight
+	bottomBarHeight := 0
+	if m.BottomBar != nil {
+		bottomBarHeight = m.bottomBarHeight
+		if bottomBarHeight == 0 { bottomBarHeight = 3 }
+	}
 
-	// NavBar takes up a fixed width, e.g., 20 characters.
-	navBarWidth := 20
-	// The remaining width is for the ViewBox.
-	viewBoxWidth := m.width - navBarWidth
+	navBarWidth := 0
+	if m.NavBar != nil {
+		navBarWidth = m.navBarWidth
+		if navBarWidth == 0 { navBarWidth = 20 }
+	}
 
-	// --- STYLING --- //
-	appBarStyle := lipgloss.NewStyle().
-		Width(m.width).
-		Height(appBarHeight).
-		Background(lipgloss.Color("#511a96"))
+	containerBoxHeight := m.height - appBarHeight - bottomBarHeight
+	containerBoxWidth := m.width - navBarWidth
 
-	navBarStyle := lipgloss.NewStyle().
-		Width(navBarWidth).
-		Height(mainContentHeight).
-		Background(lipgloss.Color("#3a136d"))
+	var appBarView, navBarView, bottomBarView, containerBoxView string
 
-	viewBoxStyle := lipgloss.NewStyle().
-		Width(viewBoxWidth).
-		Height(mainContentHeight).
-		Background(lipgloss.Color("#290d4e"))
+	if m.AppBar != nil {
+		style := m.appBarStyle.Width(m.width).Height(appBarHeight).Align(lipgloss.Center)
+		appBarView = style.Render(m.AppBar.View())
+	}
 
-	bottomBarStyle := lipgloss.NewStyle().
-		Width(m.width).
-		Height(bottomBarHeight).
-		Background(lipgloss.Color("#511a96"))
+	if m.NavBar != nil {
+		style := m.navBarStyle.Width(navBarWidth).Height(containerBoxHeight).Align(lipgloss.Center)
+		navBarView = style.Render(m.NavBar.View())
+	}
 
-	// --- RENDER --- //
-	appBarView := appBarStyle.Render(m.AppBar.View())
-	navBarView := navBarStyle.Render(m.NavBar.View())
-	viewBoxView := viewBoxStyle.Render(m.ViewBox.View())
-	bottomBarView := bottomBarStyle.Render(m.BottomBar.View())
+	if m.BottomBar != nil {
+		style := m.bottomBarStyle.Width(m.width).Height(bottomBarHeight).Align(lipgloss.Center)
+		bottomBarView = style.Render(m.BottomBar.View())
+	}
 
-	// Join NavBar and ViewBox horizontally.
-	mainContent := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		navBarView,
-		viewBoxView,
-	)
+	if(m.ContainerBox != nil){
+		style := m.containerboxStyle.Width(containerBoxWidth).Height(containerBoxHeight).Align(lipgloss.Center)
+		containerBoxView = style.Render(m.ContainerBox.View())
+	}
 
-	// Join all parts vertically.
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		appBarView,
-		mainContent,
-		bottomBarView,
-	)
+	maincontainerbox := lipgloss.JoinHorizontal(lipgloss.Top, navBarView, containerBoxView)
+
+	finalView := lipgloss.JoinVertical(lipgloss.Left, appBarView, maincontainerbox, bottomBarView)
+
+	container := m.containerStyle.Width(m.width).Height(m.height).Render(finalView)
+
+	return m.marginStyle.Render(container)
 }

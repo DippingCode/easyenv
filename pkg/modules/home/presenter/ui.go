@@ -1,3 +1,4 @@
+//Package presenter
 package presenter
 
 import (
@@ -21,10 +22,13 @@ type HomeView struct {
 
 func New() *HomeView {
 	// Create the components that this screen needs.
-	appBar := appbar.New()
 	navBar := navbar.New()
 	bottomBar := bottombar.New()
 	containerBox := containerbox.New()
+
+	appBar := appbar.New(
+		appbar.WithBackgroundColor("#FF0000"),
+	)
 
 
 	// Create a new scaffold and explicitly add the desired components.

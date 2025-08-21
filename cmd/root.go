@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/DippingCode/easyenv/pkg/core/ui/adapters"
+	"github.com/DippingCode/easyenv/pkg/core/adapters"
 	"github.com/DippingCode/easyenv/pkg/core/ui/shell"
 	"github.com/spf13/cobra"
 )

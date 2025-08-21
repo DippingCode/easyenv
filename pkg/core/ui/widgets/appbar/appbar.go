@@ -12,9 +12,8 @@ var _ tui.Layout = (*Model)(nil)
 type Option func(*Model)
 
 type Model struct {
-	width  int
-	height int
-
+	width, height int
+	desiredWidth, desiredHeight int // 0 means not explicitly set
 	// Components
 	leading tui.Model
 	title   tui.Model
@@ -52,7 +51,7 @@ func WithActions(components ...tui.Model) Option {
 }
 
 func WithHeight(h int) Option {
-	return func(m *Model) { m.height = h }
+	return func(m *Model) { m.Height(h) }
 }
 
 func WithBackgroundColor(color string) Option {
@@ -91,7 +90,27 @@ func (m *Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 
 	switch msg := msg.(type) {
 	case tui.WindowSizeMsg:
-		m.width = msg.Width
+		// Calculate available space from parent
+		availableWidth := msg.Width
+		availableHeight := msg.Height
+
+		// Apply desired dimensions if set, otherwise use available space
+		if m.desiredWidth > 0 {
+			m.width = m.desiredWidth
+		} else {
+			m.width = availableWidth
+		}
+
+		if m.desiredHeight > 0 {
+			m.height = m.desiredHeight
+		} else {
+			m.height = availableHeight
+		}
+
+		// Adjust for margins and padding
+		hMargin, vMargin := m.style.GetFrameSize()
+		m.width = m.width - hMargin
+		m.height = m.height - vMargin
 	}
 
 	// Propagate updates to children
@@ -121,7 +140,7 @@ func (m *Model) View() string {
 	leadingWidth := 0
 	if m.leading != nil {
 		leadingView = m.leading.View()
-		w, _ := m.style.GetLipglossStyle().GetFrameSize()
+		w, _ := m.style.GetFrameSize()
 		leadingWidth = w
 	}
 
@@ -132,7 +151,7 @@ func (m *Model) View() string {
 	actionsWidth := 0
 	for _, action := range m.actions {
 		view := action.View()
-		w, _ := m.style.GetLipglossStyle().GetFrameSize()
+		w, _ := m.style.GetFrameSize()
 		actionsWidth += w
 		actionsView = append(actionsView, view)
 	}
@@ -151,7 +170,7 @@ func (m *Model) View() string {
 		actionsCombined,
 	)
 
-	return m.style.Width(m.width).Render(content)
+	return m.style.Width(m.width).Height(m.height).Render(content)
 }
 
 // --- layout.Layout Implementation ---
@@ -177,12 +196,14 @@ func (m *Model) Padding(p ...int) tui.Layout {
 }
 
 func (m *Model) Width(width int) tui.Layout {
-	m.style.Width(width)
+	m.desiredWidth = width
+	m.style.Width(width) // Apply to style immediately for GetFrameSize
 	return m
 }
 
 func (m *Model) Height(height int) tui.Layout {
-	m.style.Height(height)
+	m.desiredHeight = height
+	m.style.Height(height) // Apply to style immediately for GetFrameSize
 	return m
 }
 

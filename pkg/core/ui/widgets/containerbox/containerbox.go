@@ -20,6 +20,8 @@ type Option func(*Model)
 
 // Model is a basic implementation of a ContainerBox.
 type Model struct {
+	width, height int
+	desiredWidth, desiredHeight int // 0 means not explicitly set
 	style tui.Style
 }
 
@@ -73,11 +75,35 @@ func (m *Model) Init() tui.Cmd {
 }
 
 func (m *Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
+	switch msg := msg.(type) {
+	case tui.WindowSizeMsg:
+		// Calculate available space from parent
+		availableWidth := msg.Width
+		availableHeight := msg.Height
+
+		// Apply desired dimensions if set, otherwise use available space
+		if m.desiredWidth > 0 {
+			m.width = m.desiredWidth
+		} else {
+			m.width = availableWidth
+		}
+
+		if m.desiredHeight > 0 {
+			m.height = m.desiredHeight
+		} else {
+			m.height = availableHeight
+		}
+
+		// Adjust for margins and padding
+		hMargin, vMargin := m.style.GetFrameSize()
+		m.width = m.width - hMargin
+		m.height = m.height - vMargin
+	}
 	return m, nil
 }
 
 func (m *Model) View() string {
-	return m.style.Render("Default ContainerBox")
+	return m.style.Width(m.width).Height(m.height).Render("Default ContainerBox")
 }
 
 // --- tui.Layout Implementation ---
@@ -103,12 +129,14 @@ func (m *Model) Padding(p ...int) tui.Layout {
 }
 
 func (m *Model) Width(width int) tui.Layout {
-	m.style.Width(width)
+	m.desiredWidth = width
+	m.style.Width(width) // Apply to style immediately for GetFrameSize
 	return m
 }
 
 func (m *Model) Height(height int) tui.Layout {
-	m.style.Height(height)
+	m.desiredHeight = height
+	m.style.Height(height) // Apply to style immediately for GetFrameSize
 	return m
 }
 

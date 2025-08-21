@@ -17,6 +17,7 @@ type Option func(*Model)
 
 type Model struct {
 	width, height int
+	desiredWidth, desiredHeight int // 0 means not explicitly set
 
 	AppBar       *appbar.Model
 	NavBar       *navbar.Model
@@ -110,6 +111,18 @@ func WithBottomBarHeight(h int) Option {
 	return func(m *Model) { m.bottomBarHeight = h }
 }
 
+func WithWidth(width int) Option {
+	return func(m *Model) { m.Width(width) }
+}
+
+func WithHeight(height int) Option {
+	return func(m *Model) { m.Height(height) }
+}
+
+func WithAlign(pos tui.Position) Option {
+	return func(m *Model) { m.Align(pos) }
+}
+
 // --- TUI MODEL IMPLEMENTATION ---
 
 func (m *Model) Init() tui.Cmd {
@@ -135,10 +148,28 @@ func (m *Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 
 	switch msg := msg.(type) {
 	case tui.WindowSizeMsg:
+		// Calculate available space from parent
+		availableWidth := msg.Width
+		availableHeight := msg.Height
+
+		// Apply desired dimensions if set, otherwise use available space
+		if m.desiredWidth > 0 {
+			m.width = m.desiredWidth
+		} else {
+			m.width = availableWidth
+		}
+
+		if m.desiredHeight > 0 {
+			m.height = m.desiredHeight
+		} else {
+			m.height = availableHeight
+		}
+
+		// Adjust for margins and padding
 		hMargin, vMargin := m.marginStyle.GetFrameSize()
 		hPadding, vPadding := m.containerStyle.GetFrameSize()
-		m.width = msg.Width - hMargin - hPadding
-		m.height = msg.Height - vMargin - vPadding
+		m.width = m.width - hMargin - hPadding
+		m.height = m.height - vMargin - vPadding
 	}
 
 	// Delegate updates to children
@@ -256,12 +287,14 @@ func (m *Model) Padding(p ...int) tui.Layout {
 }
 
 func (m *Model) Width(width int) tui.Layout {
-	m.containerStyle.Width(width)
+	m.desiredWidth = width
+	m.containerStyle.Width(width) // Apply to style immediately for GetFrameSize
 	return m
 }
 
 func (m *Model) Height(height int) tui.Layout {
-	m.containerStyle.Height(height)
+	m.desiredHeight = height
+	m.containerStyle.Height(height) // Apply to style immediately for GetFrameSize
 	return m
 }
 

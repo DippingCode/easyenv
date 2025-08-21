@@ -1,3 +1,4 @@
+//Package scaffold
 package scaffold
 
 import (

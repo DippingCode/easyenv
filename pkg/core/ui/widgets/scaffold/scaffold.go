@@ -1,4 +1,3 @@
-//Package scaffold
 package scaffold
 
 import (
@@ -112,10 +111,26 @@ func WithBottomBarHeight(h int) Option {
 // --- TUI MODEL IMPLEMENTATION ---
 
 func (m Model) Init() tui.Cmd {
-	return nil
+	// Delegate Init to children
+	var cmds []tui.Cmd
+	if m.AppBar != nil {
+		cmds = append(cmds, m.AppBar.Init())
+	}
+	if m.NavBar != nil {
+		cmds = append(cmds, m.NavBar.Init())
+	}
+	if m.BottomBar != nil {
+		cmds = append(cmds, m.BottomBar.Init())
+	}
+	if m.ContainerBox != nil {
+		cmds = append(cmds, m.ContainerBox.Init())
+	}
+	return tui.Batch(cmds...)
 }
 
 func (m Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
+	var cmds []tui.Cmd
+
 	switch msg := msg.(type) {
 	case tui.WindowSizeMsg:
 		hMargin, vMargin := m.marginStyle.GetFrameSize()
@@ -123,7 +138,30 @@ func (m Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 		m.width = msg.Width - hMargin - hPadding
 		m.height = msg.Height - vMargin - vPadding
 	}
-	return m, nil
+
+	// Delegate updates to children
+	if m.AppBar != nil {
+		newAppBar, cmd := m.AppBar.Update(msg)
+		*m.AppBar = newAppBar.(appbar.Model)
+		cmds = append(cmds, cmd)
+	}
+	if m.NavBar != nil {
+		newNavBar, cmd := m.NavBar.Update(msg)
+		*m.NavBar = newNavBar.(navbar.Model)
+		cmds = append(cmds, cmd)
+	}
+	if m.BottomBar != nil {
+		newBottomBar, cmd := m.BottomBar.Update(msg)
+		*m.BottomBar = newBottomBar.(bottombar.Model)
+		cmds = append(cmds, cmd)
+	}
+	if m.ContainerBox != nil {
+		newContainerBox, cmd := m.ContainerBox.Update(msg)
+		*m.ContainerBox = newContainerBox.(containerbox.Model)
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tui.Batch(cmds...)
 }
 
 func (m Model) View() string {

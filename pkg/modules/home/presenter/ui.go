@@ -43,19 +43,14 @@ func New() *HomeView {
 
 // Init initializes the HomeView.
 func (hv *HomeView) Init() tui.Cmd {
-	// The scaffold's Init method must also be updated to return a tui.Cmd
-	// return hv.scaffold.Init()
-	return nil // Returning nil for now to avoid compile errors.
+	return hv.scaffold.Init()
 }
 
 // Update handles messages for the HomeView.
 func (hv *HomeView) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
-	// The scaffold's Update method must be updated to accept tui.Msg
-	// and return (tui.Model, tui.Cmd).
-	// newScaffold, cmd := hv.scaffold.Update(msg)
-	// hv.scaffold = newScaffold.(scaffold.Model)
-	// return hv, cmd
-	return hv, nil // Returning nil for now.
+	newScaffold, cmd := hv.scaffold.Update(msg)
+	hv.scaffold = newScaffold.(scaffold.Model)
+	return hv, cmd
 }
 
 // View renders the HomeView.

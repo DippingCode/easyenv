@@ -89,8 +89,15 @@ func toTeaCmd(cmd Cmd) tea.Cmd {
 	}
 	return func() tea.Msg {
 		// When the command is run, it produces a generic Msg.
-		// Since tea.Msg is an interface{} (any), we can return it directly.
-		return cmd()
+		msg := cmd()
+
+		// If the message is a batch message, we unpack it and convert it to a tea.Batch.
+		if b, ok := msg.(BatchMsg); ok {
+			return tea.Batch(toTeaCmds(b)...)
+		}
+
+		// Otherwise, we return the message directly.
+		return msg
 	}
 }
 

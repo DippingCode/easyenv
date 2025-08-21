@@ -94,16 +94,19 @@ func (m *Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 			m.height = availableHeight
 		}
 
-		// Adjust for margins and padding
-		hMargin, vMargin := m.style.GetFrameSize()
-		m.width = m.width - hMargin
-		m.height = m.height - vMargin
+		// No longer subtracting GetFrameSize here. The style's Width/Height will handle it.
 	}
 	return m, nil
 }
 
 func (m *Model) View() string {
-	return m.style.Width(m.width).Height(m.height).Render("Default ContainerBox")
+	// Calculate content dimensions based on total width/height and frame size
+	hFrame, vFrame := m.style.GetFrameSize()
+	contentWidth := m.width - hFrame
+	contentHeight := m.height - vFrame
+
+	// Render the content with the calculated content dimensions
+	return m.style.Width(contentWidth).Height(contentHeight).Render("Default ContainerBox")
 }
 
 // --- tui.Layout Implementation ---
@@ -130,13 +133,13 @@ func (m *Model) Padding(p ...int) tui.Layout {
 
 func (m *Model) Width(width int) tui.Layout {
 	m.desiredWidth = width
-	m.style.Width(width) // Apply to style immediately for GetFrameSize
+	// m.style.Width(width) // REMOVED: This is now handled in View()
 	return m
 }
 
 func (m *Model) Height(height int) tui.Layout {
 	m.desiredHeight = height
-	m.style.Height(height) // Apply to style immediately for GetFrameSize
+	// m.style.Height(height) // REMOVED: This is now handled in View()
 	return m
 }
 

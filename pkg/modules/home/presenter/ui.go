@@ -5,7 +5,7 @@ import (
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/appbar"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/bottombar"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/containerbox"
-	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/navbar"
+	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/sidemenu"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/scaffold"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/viewbox"
 )
@@ -20,13 +20,13 @@ type HomeView struct {
 
 // New creates a new HomeView instance.
 func New() *HomeView {
-	// NOTE: The components below (navbar, bottombar, etc.) will also need to be
+	// NOTE: The components below (sidemenu, bottombar, etc.) will also need to be
 	// refactored to use the tui.Model interface. This is a temporary state.
-	navBar := navbar.New(
-		navbar.WithBackgroundColor("#0000FF"), // Azul
-		navbar.WithBorder(tui.NormalBorder, true, true, true, true), // Borda normal em todos os lados
-		navbar.WithBorderForeground("#FF0000"), // Vermelho
-		navbar.WithAlign(tui.Top),
+	sidemenu := sidemenu.New(
+		sidemenu.WithBackgroundColor("#0000FF"), // Azul
+		sidemenu.WithBorder(tui.NormalBorder, true, true, true, true), // Borda normal em todos os lados
+		sidemenu.WithBorderForeground("#FF0000"), // Vermelho
+		sidemenu.WithAlign(tui.Top),
 	)
 	bottomBar := bottombar.New(
 		bottombar.WithBackgroundColor("#FF0000"), // Vermelho
@@ -34,12 +34,23 @@ func New() *HomeView {
 		bottombar.WithBorderForeground("#0000FF"), // Azul
 		bottombar.WithAlign(tui.Top),
 	)
-	containerBox := containerbox.New()
-	appBar := appbar.New()
+	containerBox := containerbox.New(
+		containerbox.WithBackgroundColor("#00FF00"), // Verde
+		containerbox.WithBorder(tui.NormalBorder, true, true, true, true), // Borda normal em todos os lados
+		containerbox.WithBorderForeground("#0000FF"), // Azul
+		containerbox.WithAlign(tui.Top),
+		
+	)
+	appBar := appbar.New(
+		appbar.WithBackgroundColor("#FF0000"), // Vermelho
+		appbar.WithBorder(tui.NormalBorder, true, true, true, true), // Borda normal em todos os lados
+		appbar.WithBorderForeground("#0000FF"), // Azul
+		appbar.WithAlign(tui.Top),
+	)
 
 	scaffold := scaffold.New(
 		scaffold.WithAppBar(appBar),
-		scaffold.WithNavBar(navBar),
+		scaffold.Withsidemenu(sidemenu),
 		scaffold.WithBottomBar(bottomBar),
 		scaffold.WithContainerBox(containerBox),
 		scaffold.WithBackgroundColor("#0F0F0F"),

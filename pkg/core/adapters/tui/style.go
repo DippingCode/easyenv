@@ -200,3 +200,8 @@ func JoinVertical(pos Position, ss ...string) string {
 	return lg.JoinVertical(lg.Position(pos), ss...)
 }
 
+// Width returns the rendered width of a string.
+func Width(s string) int {
+	return lg.Width(s)
+}
+

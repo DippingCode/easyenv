@@ -107,10 +107,7 @@ func (m *Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 			m.height = availableHeight
 		}
 
-		// Adjust for margins and padding
-		hMargin, vMargin := m.style.GetFrameSize()
-		m.width = m.width - hMargin
-		m.height = m.height - vMargin
+		// No longer subtracting GetFrameSize here. The style's Width/Height will handle it.
 	}
 
 	// Propagate updates to children
@@ -140,8 +137,7 @@ func (m *Model) View() string {
 	leadingWidth := 0
 	if m.leading != nil {
 		leadingView = m.leading.View()
-		w, _ := m.style.GetFrameSize()
-		leadingWidth = w
+		leadingWidth = tui.Width(leadingView) // Use tui.Width
 	}
 
 	if m.title != nil {
@@ -151,14 +147,13 @@ func (m *Model) View() string {
 	actionsWidth := 0
 	for _, action := range m.actions {
 		view := action.View()
-		w, _ := m.style.GetFrameSize()
-		actionsWidth += w
+		actionsWidth += tui.Width(view) // Use tui.Width
 		actionsView = append(actionsView, view)
 	}
 	actionsCombined := tui.JoinHorizontal(tui.Center, actionsView...)
 
-	hPadding, _ := m.style.GetFrameSize()
-	remainingWidth := m.width - leadingWidth - actionsWidth - hPadding
+	hFrame, vFrame := m.style.GetFrameSize()
+	remainingWidth := m.width - leadingWidth - actionsWidth - hFrame // Use hFrame
 
 	spacer := tui.NewStyle().Width(remainingWidth).Render("")
 
@@ -170,7 +165,12 @@ func (m *Model) View() string {
 		actionsCombined,
 	)
 
-	return m.style.Width(m.width).Height(m.height).Render(content)
+	// Calculate content dimensions based on total width/height and frame size
+	contentWidth := m.width - hFrame
+	contentHeight := m.height - vFrame
+
+	// Render the content with the calculated content dimensions
+	return m.style.Width(contentWidth).Height(contentHeight).Render(content)
 }
 
 // --- layout.Layout Implementation ---
@@ -197,13 +197,13 @@ func (m *Model) Padding(p ...int) tui.Layout {
 
 func (m *Model) Width(width int) tui.Layout {
 	m.desiredWidth = width
-	m.style.Width(width) // Apply to style immediately for GetFrameSize
+	// m.style.Width(width) // REMOVED: This is now handled in View()
 	return m
 }
 
 func (m *Model) Height(height int) tui.Layout {
 	m.desiredHeight = height
-	m.style.Height(height) // Apply to style immediately for GetFrameSize
+	// m.style.Height(height) // REMOVED: This is now handled in View()
 	return m
 }
 

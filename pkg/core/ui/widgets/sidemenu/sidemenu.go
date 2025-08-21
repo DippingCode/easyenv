@@ -1,4 +1,4 @@
-package navbar
+package sidemenu
 
 import (
 	"github.com/DippingCode/easyenv/pkg/core/adapters/tui"
@@ -8,7 +8,7 @@ import (
 var _ tui.Model = (*Model)(nil)
 var _ tui.Layout = (*Model)(nil)
 
-// Option is a functional option for configuring the NavBar.
+// Option is a functional option for configuring the sidemenu.
 type Option func(*Model)
 
 type Model struct {
@@ -17,7 +17,7 @@ type Model struct {
 	style tui.Style
 }
 
-// New creates a new NavBar with the given options.
+// New creates a new sidemenu with the given options.
 func New(opts ...Option) *Model {
 	m := &Model{
 		style: tui.NewStyle(),
@@ -86,16 +86,19 @@ func (m *Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 			m.height = availableHeight
 		}
 
-		// Adjust for margins and padding
-		hMargin, vMargin := m.style.GetFrameSize()
-		m.width = m.width - hMargin
-		m.height = m.height - vMargin
+		// No longer subtracting GetFrameSize here. The style's Width/Height will handle it.
 	}
 	return m, nil
 }
 
 func (m *Model) View() string {
-	return m.style.Width(m.width).Height(m.height).Render("NavBar")
+	// Calculate content dimensions based on total width/height and frame size
+	hFrame, vFrame := m.style.GetFrameSize()
+	contentWidth := m.width - hFrame
+	contentHeight := m.height - vFrame
+
+	// Render the content with the calculated content dimensions
+	return m.style.Width(contentWidth).Height(contentHeight).Render("sidemenu")
 }
 
 // --- tui.Layout Implementation ---
@@ -122,13 +125,13 @@ func (m *Model) Padding(p ...int) tui.Layout {
 
 func (m *Model) Width(width int) tui.Layout {
 	m.desiredWidth = width
-	m.style.Width(width) // Apply to style immediately for GetFrameSize
+	// m.style.Width(width) // REMOVED: This is now handled in View()
 	return m
 }
 
 func (m *Model) Height(height int) tui.Layout {
 	m.desiredHeight = height
-	m.style.Height(height) // Apply to style immediately for GetFrameSize
+	// m.style.Height(height) // REMOVED: This is now handled in View()
 	return m
 }
 

@@ -5,7 +5,7 @@ import (
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/appbar"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/bottombar"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/containerbox"
-	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/navbar"
+	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/sidemenu"
 )
 
 // Ensure Model implements the tui.Model and tui.Layout interfaces.
@@ -20,18 +20,18 @@ type Model struct {
 	desiredWidth, desiredHeight int // 0 means not explicitly set
 
 	AppBar       *appbar.Model
-	NavBar       *navbar.Model
+	sidemenu       *sidemenu.Model
 	BottomBar    *bottombar.Model
 	ContainerBox *containerbox.Model
 
 	marginStyle       tui.Style
 	containerStyle    tui.Style
 	appBarStyle       tui.Style
-	navBarStyle       tui.Style
+	sidemenuStyle       tui.Style
 	bottomBarStyle    tui.Style
 	containerboxStyle tui.Style
 	appBarHeight      int
-	navBarWidth       int
+	sidemenuWidth       int
 	bottomBarHeight   int
 }
 
@@ -41,7 +41,7 @@ func New(opts ...Option) *Model {
 		marginStyle:       tui.NewStyle(),
 		containerStyle:    tui.NewStyle(),
 		appBarStyle:       tui.NewStyle(),
-		navBarStyle:       tui.NewStyle(),
+		sidemenuStyle:       tui.NewStyle(),
 		bottomBarStyle:    tui.NewStyle(),
 		containerboxStyle: tui.NewStyle(),
 	}
@@ -59,8 +59,8 @@ func WithAppBar(appBar *appbar.Model) Option {
 	return func(m *Model) { m.AppBar = appBar }
 }
 
-func WithNavBar(navBar *navbar.Model) Option {
-	return func(m *Model) { m.NavBar = navBar }
+func Withsidemenu(sidemenu *sidemenu.Model) Option {
+	return func(m *Model) { m.sidemenu = sidemenu }
 }
 
 func WithBottomBar(bottomBar *bottombar.Model) Option {
@@ -87,8 +87,8 @@ func WithAppBarBackgroundColor(c string) Option {
 	return func(m *Model) { m.appBarStyle.Background(c) }
 }
 
-func WithNavBarBackgroundColor(c string) Option {
-	return func(m *Model) { m.navBarStyle.Background(c) }
+func WithsidemenuBackgroundColor(c string) Option {
+	return func(m *Model) { m.sidemenuStyle.Background(c) }
 }
 
 func WithBottomBarBackgroundColor(c string) Option {
@@ -103,8 +103,8 @@ func WithAppBarHeight(h int) Option {
 	return func(m *Model) { m.appBarHeight = h }
 }
 
-func WithNavBarWidth(w int) Option {
-	return func(m *Model) { m.navBarWidth = w }
+func WithsidemenuWidth(w int) Option {
+	return func(m *Model) { m.sidemenuWidth = w }
 }
 
 func WithBottomBarHeight(h int) Option {
@@ -131,8 +131,8 @@ func (m *Model) Init() tui.Cmd {
 	if m.AppBar != nil {
 		cmds = append(cmds, m.AppBar.Init())
 	}
-	if m.NavBar != nil {
-		cmds = append(cmds, m.NavBar.Init())
+	if m.sidemenu != nil {
+		cmds = append(cmds, m.sidemenu.Init())
 	}
 	if m.BottomBar != nil {
 		cmds = append(cmds, m.BottomBar.Init())
@@ -146,11 +146,11 @@ func (m *Model) Init() tui.Cmd {
 func (m *Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 	var cmds []tui.Cmd
 
-	switch msg := msg.(type) {
-	case tui.WindowSizeMsg:
+	// Handle WindowSizeMsg for the Scaffold itself
+	if wsMsg, ok := msg.(tui.WindowSizeMsg); ok {
 		// Calculate available space from parent
-		availableWidth := msg.Width
-		availableHeight := msg.Height
+		availableWidth := wsMsg.Width
+		availableHeight := wsMsg.Height
 
 		// Apply desired dimensions if set, otherwise use available space
 		if m.desiredWidth > 0 {
@@ -165,37 +165,93 @@ func (m *Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 			m.height = availableHeight
 		}
 
-		// Adjust for margins and padding
-		hMargin, vMargin := m.marginStyle.GetFrameSize()
-		hPadding, vPadding := m.containerStyle.GetFrameSize()
-		m.width = m.width - hMargin - hPadding
-		m.height = m.height - vMargin - vPadding
-	}
+		// Now, calculate slot dimensions for children based on Scaffold's new size
+		appBarHeight := 0
+		if m.AppBar != nil {
+			appBarHeight = m.appBarHeight
+			if appBarHeight == 0 {
+				appBarHeight = 3
+			}
+		}
 
-	// Delegate updates to children
-	if m.AppBar != nil {
-		newAppBar, cmd := m.AppBar.Update(msg)
-		newAppBarModel := newAppBar.(*appbar.Model)
-		*m.AppBar = *newAppBarModel
-		cmds = append(cmds, cmd)
-	}
-	if m.NavBar != nil {
-		newNavBar, cmd := m.NavBar.Update(msg)
-		newNavBarModel := newNavBar.(*navbar.Model)
-		*m.NavBar = *newNavBarModel
-		cmds = append(cmds, cmd)
-	}
-	if m.BottomBar != nil {
-		newBottomBar, cmd := m.BottomBar.Update(msg)
-		newBottomBarModel := newBottomBar.(*bottombar.Model)
-		*m.BottomBar = *newBottomBarModel
-		cmds = append(cmds, cmd)
-	}
-	if m.ContainerBox != nil {
-		newContainerBox, cmd := m.ContainerBox.Update(msg)
-		newContainerBoxModel := newContainerBox.(*containerbox.Model)
-		*m.ContainerBox = *newContainerBoxModel
-		cmds = append(cmds, cmd)
+		bottomBarHeight := 0
+		if m.BottomBar != nil {
+			bottomBarHeight = m.bottomBarHeight
+			if bottomBarHeight == 0 {
+				bottomBarHeight = 3
+			}
+		}
+
+		sidemenuWidth := 0
+		if m.sidemenu != nil {
+			sidemenuWidth = m.sidemenuWidth
+			if sidemenuWidth == 0 {
+				sidemenuWidth = 20
+			}
+		}
+
+		mainContentHeight := m.height - appBarHeight - bottomBarHeight
+		mainContentWidth := m.width
+
+		// Delegate updates to children, passing their specific slot dimensions
+		if m.AppBar != nil {
+			appBarSlotMsg := tui.WindowSizeMsg{Width: m.width, Height: appBarHeight}
+			newAppBar, cmd := m.AppBar.Update(appBarSlotMsg)
+			newAppBarModel := newAppBar.(*appbar.Model)
+			*m.AppBar = *newAppBarModel
+			cmds = append(cmds, cmd)
+		}
+
+		if m.sidemenu != nil {
+			sidemenuSlotMsg := tui.WindowSizeMsg{Width: sidemenuWidth, Height: mainContentHeight}
+			newsidemenu, cmd := m.sidemenu.Update(sidemenuSlotMsg)
+			newsidemenuModel := newsidemenu.(*sidemenu.Model)
+			*m.sidemenu = *newsidemenuModel
+			cmds = append(cmds, cmd)
+		}
+
+		if m.BottomBar != nil {
+			bottomBarSlotMsg := tui.WindowSizeMsg{Width: m.width, Height: bottomBarHeight}
+			newBottomBar, cmd := m.BottomBar.Update(bottomBarSlotMsg)
+			newBottomBarModel := newBottomBar.(*bottombar.Model)
+			*m.BottomBar = *newBottomBarModel
+			cmds = append(cmds, cmd)
+		}
+
+		if m.ContainerBox != nil {
+			containerBoxSlotWidth := mainContentWidth - sidemenuWidth
+			containerBoxSlotMsg := tui.WindowSizeMsg{Width: containerBoxSlotWidth, Height: mainContentHeight}
+			newContainerBox, cmd := m.ContainerBox.Update(containerBoxSlotMsg)
+			newContainerBoxModel := newContainerBox.(*containerbox.Model)
+			*m.ContainerBox = *newContainerBoxModel
+			cmds = append(cmds, cmd)
+		}
+	} else {
+		// If it's not a WindowSizeMsg, propagate the original message to all children
+		if m.AppBar != nil {
+			newAppBar, cmd := m.AppBar.Update(msg)
+			newAppBarModel := newAppBar.(*appbar.Model)
+			*m.AppBar = *newAppBarModel
+			cmds = append(cmds, cmd)
+		}
+		if m.sidemenu != nil {
+			newsidemenu, cmd := m.sidemenu.Update(msg)
+			newsidemenuModel := newsidemenu.(*sidemenu.Model)
+			*m.sidemenu = *newsidemenuModel
+			cmds = append(cmds, cmd)
+		}
+		if m.BottomBar != nil {
+			newBottomBar, cmd := m.BottomBar.Update(msg)
+			newBottomBarModel := newBottomBar.(*bottombar.Model)
+			*m.BottomBar = *newBottomBarModel
+			cmds = append(cmds, cmd)
+		}
+		if m.ContainerBox != nil {
+			newContainerBox, cmd := m.ContainerBox.Update(msg)
+			newContainerBoxModel := newContainerBox.(*containerbox.Model)
+			*m.ContainerBox = *newContainerBoxModel
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tui.Batch(cmds...)
@@ -222,27 +278,27 @@ func (m *Model) View() string {
 		}
 	}
 
-	navBarWidth := 0
-	if m.NavBar != nil {
-		navBarWidth = m.navBarWidth
-		if navBarWidth == 0 {
-			navBarWidth = 20
+	sidemenuWidth := 0
+	if m.sidemenu != nil {
+		sidemenuWidth = m.sidemenuWidth
+		if sidemenuWidth == 0 {
+			sidemenuWidth = 20
 		}
 	}
 
 	containerBoxHeight := m.height - appBarHeight - bottomBarHeight
-	containerBoxWidth := m.width - navBarWidth
+	containerBoxWidth := m.width - sidemenuWidth
 
-	var appBarView, navBarView, bottomBarView, containerBoxView string
+	var appBarView, sidemenuView, bottomBarView, containerBoxView string
 
 	if m.AppBar != nil {
 		viewStyle := m.appBarStyle.Width(m.width).Height(appBarHeight).Align(tui.Center)
 		appBarView = viewStyle.Render(m.AppBar.View())
 	}
 
-	if m.NavBar != nil {
-		viewStyle := m.navBarStyle.Width(navBarWidth).Height(containerBoxHeight).Align(tui.Center)
-		navBarView = viewStyle.Render(m.NavBar.View())
+	if m.sidemenu != nil {
+		viewStyle := m.sidemenuStyle.Width(sidemenuWidth).Height(containerBoxHeight).Align(tui.Center)
+		sidemenuView = viewStyle.Render(m.sidemenu.View())
 	}
 
 	if m.BottomBar != nil {
@@ -255,7 +311,7 @@ func (m *Model) View() string {
 		containerBoxView = viewStyle.Render(m.ContainerBox.View())
 	}
 
-	maincontainerbox := tui.JoinHorizontal(tui.Top, navBarView, containerBoxView)
+	maincontainerbox := tui.JoinHorizontal(tui.Top, sidemenuView, containerBoxView)
 
 	finalView := tui.JoinVertical(tui.Left, appBarView, maincontainerbox, bottomBarView)
 

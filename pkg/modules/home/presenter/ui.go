@@ -2,48 +2,38 @@
 package presenter
 
 import (
+	"github.com/DippingCode/easyenv/pkg/core/adapters/tui"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/appbar"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/bottombar"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/containerbox"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/navbar"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/scaffold"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/viewbox"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
-// Ensure HomeView implements the ViewBox interface.
+// Ensure HomeView implements the ViewBox interface (which is tui.Model).
 var _ viewbox.ViewBox = (*HomeView)(nil)
 
 // HomeView is the ViewBox for the home screen.
-// It owns the scaffold and provides the content to be displayed.
 type HomeView struct {
-	scaffold scaffold.Model
+	scaffold scaffold.Model // This will need to be updated to use tui.Model
 }
 
+// New creates a new HomeView instance.
 func New() *HomeView {
-	// Create the components that this screen needs.
+	// NOTE: The components below (navbar, bottombar, etc.) will also need to be
+	// refactored to use the tui.Model interface. This is a temporary state.
 	navBar := navbar.New()
 	bottomBar := bottombar.New()
 	containerBox := containerbox.New()
+	appBar := appbar.New()
 
-	appBar := appbar.New(
-		appbar.WithBackgroundColor("#FF0000"),
-	)
-
-
-	// Create a new scaffold and explicitly add the desired components.
 	scaffold := scaffold.New(
-		// Components
 		scaffold.WithAppBar(appBar),
 		scaffold.WithNavBar(navBar),
 		scaffold.WithBottomBar(bottomBar),
 		scaffold.WithContainerBox(containerBox),
-
-		// Styling
-		//scaffold.WithMargin(1),
 		scaffold.WithBackgroundColor("#0F0F0F"),
-		scaffold.WithAppBarBackgroundColor("#202020"),
-		scaffold.WithContainerBoxBackgroundColor("#5DD62C"),
 	)
 
 	return &HomeView{
@@ -51,22 +41,24 @@ func New() *HomeView {
 	}
 }
 
-func (hv *HomeView) Init() tea.Cmd {
-	return hv.scaffold.Init()
+// Init initializes the HomeView.
+func (hv *HomeView) Init() tui.Cmd {
+	// The scaffold's Init method must also be updated to return a tui.Cmd
+	// return hv.scaffold.Init()
+	return nil // Returning nil for now to avoid compile errors.
 }
 
-func (hv *HomeView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	// The scaffold model is not a pointer, so we don't need to dereference it.
-	// Also, its Update method returns a Model, not a pointer to one.
-	newScaffold, cmd := hv.scaffold.Update(msg)
-	hv.scaffold = newScaffold
-	return hv, cmd
+// Update handles messages for the HomeView.
+func (hv *HomeView) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
+	// The scaffold's Update method must be updated to accept tui.Msg
+	// and return (tui.Model, tui.Cmd).
+	// newScaffold, cmd := hv.scaffold.Update(msg)
+	// hv.scaffold = newScaffold.(scaffold.Model)
+	// return hv, cmd
+	return hv, nil // Returning nil for now.
 }
 
+// View renders the HomeView.
 func (hv *HomeView) View() string {
-	//homeContent := "Welcome to the Home Screen!\n\nThis is the content area managed by the HomeView.\n\nMy Scaffold is now fully optional!"
-
-	//hv.scaffold.SetContent(homeContent)
 	return hv.scaffold.View()
 }

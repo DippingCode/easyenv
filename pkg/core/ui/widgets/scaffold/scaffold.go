@@ -172,7 +172,7 @@ func (m *Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m *Model) View() string {
 	if m.width <= 0 || m.height <= 0 {
-		return "Initializing..."
+		return "Initializing scaffold..."
 	}
 
 	appBarHeight := 0

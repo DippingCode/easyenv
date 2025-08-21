@@ -1,10 +1,14 @@
+//Package shell
 package shell
 
 import (
+	"github.com/DippingCode/easyenv/pkg/core/adapters/tui"
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/viewbox"
 	"github.com/DippingCode/easyenv/pkg/modules/home/presenter"
-	tea "github.com/charmbracelet/bubbletea"
 )
+
+// Ensure Shell implements the tui.Model interface.
+var _ tui.Model = (*Shell)(nil)
 
 // Shell is the root model of the application.
 // It holds the active screen (ViewBox) and handles global commands.
@@ -14,29 +18,31 @@ type Shell struct {
 }
 
 // New creates a new shell, initializing the home screen as the active view.
-func New() Shell {
-	return Shell{
+func New() *Shell {
+	return &Shell{
 		activeViewBox:  presenter.New(),
 		escPressedOnce: false,
 	}
 }
 
-func (s Shell) Init() tea.Cmd {
+func (s *Shell) Init() tui.Cmd {
+	// This will cause a compile error until viewbox.ViewBox is updated.
 	return s.activeViewBox.Init()
 }
 
-func (s Shell) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (s *Shell) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tui.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC:
-			return s, tea.Quit
+		case tui.KeyCtrlC:
+			return s, tui.Quit
 
-		case tea.KeyEsc:
+		case tui.KeyEsc:
 			if s.escPressedOnce {
-				return s, tea.Quit
+				return s, tui.Quit
 			}
 			s.escPressedOnce = true
+			// We don't return a command here, just wait for the next message.
 			return s, nil
 		}
 	}
@@ -44,13 +50,13 @@ func (s Shell) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	s.escPressedOnce = false
 
 	// Delegate the message to the active screen.
-	var cmd tea.Cmd
+	// This will also cause a compile error until viewbox.ViewBox is updated.
 	newViewBox, cmd := s.activeViewBox.Update(msg)
 	s.activeViewBox = newViewBox.(viewbox.ViewBox)
 	return s, cmd
 }
 
-func (s Shell) View() string {
+func (s *Shell) View() string {
 	// The shell's view is simply the view of the active screen.
 	return s.activeViewBox.View()
 }

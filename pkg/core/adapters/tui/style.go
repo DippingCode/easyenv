@@ -1,5 +1,5 @@
-//Package style
-package style
+//Package tui
+package tui
 
 import (
 	lg "github.com/charmbracelet/lipgloss"
@@ -187,3 +187,16 @@ func toLipglossBorder(b Border) lg.Border {
 		BottomRight: b.BottomRight,
 	}
 }
+
+// --- Join Functions ---
+
+// JoinHorizontal joins strings horizontally.
+func JoinHorizontal(pos Position, ss ...string) string {
+	return lg.JoinHorizontal(lg.Position(pos), ss...)
+}
+
+// JoinVertical joins strings vertically.
+func JoinVertical(pos Position, ss ...string) string {
+	return lg.JoinVertical(lg.Position(pos), ss...)
+}
+

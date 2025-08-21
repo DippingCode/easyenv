@@ -1,4 +1,3 @@
-//Package presenter
 package presenter
 
 import (
@@ -16,15 +15,25 @@ var _ viewbox.ViewBox = (*HomeView)(nil)
 
 // HomeView is the ViewBox for the home screen.
 type HomeView struct {
-	scaffold scaffold.Model // This will need to be updated to use tui.Model
+	scaffold *scaffold.Model // Changed to pointer
 }
 
 // New creates a new HomeView instance.
 func New() *HomeView {
 	// NOTE: The components below (navbar, bottombar, etc.) will also need to be
 	// refactored to use the tui.Model interface. This is a temporary state.
-	navBar := navbar.New()
-	bottomBar := bottombar.New()
+	navBar := navbar.New(
+		navbar.WithBackgroundColor("#0000FF"), // Azul
+		navbar.WithBorder(tui.NormalBorder, true, true, true, true), // Borda normal em todos os lados
+		navbar.WithBorderForeground("#FF0000"), // Vermelho
+		navbar.WithAlign(tui.Top),
+	)
+	bottomBar := bottombar.New(
+		bottombar.WithBackgroundColor("#FF0000"), // Vermelho
+		bottombar.WithBorder(tui.NormalBorder, true, true, true, true), // Borda normal em todos os lados
+		bottombar.WithBorderForeground("#0000FF"), // Azul
+		bottombar.WithAlign(tui.Top),
+	)
 	containerBox := containerbox.New()
 	appBar := appbar.New()
 
@@ -49,7 +58,7 @@ func (hv *HomeView) Init() tui.Cmd {
 // Update handles messages for the HomeView.
 func (hv *HomeView) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 	newScaffold, cmd := hv.scaffold.Update(msg)
-	hv.scaffold = newScaffold.(scaffold.Model)
+	hv.scaffold = newScaffold.(*scaffold.Model) // Changed type assertion
 	return hv, cmd
 }
 

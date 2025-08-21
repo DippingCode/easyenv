@@ -2,16 +2,15 @@ package appbar
 
 import (
 	"github.com/DippingCode/easyenv/pkg/core/adapters/tui"
-	"github.com/charmbracelet/lipgloss"
 )
 
-// Ensure Model implements the tui.Model interface.
+// Ensure Model implements the tui.Model and tui.Layout interfaces.
 var _ tui.Model = (*Model)(nil)
+var _ tui.Layout = (*Model)(nil)
 
 // Option is a functional option for configuring the AppBar.
 type Option func(*Model)
 
-// Model represents the AppBar component.
 type Model struct {
 	width  int
 	height int
@@ -22,84 +21,108 @@ type Model struct {
 	actions []tui.Model
 
 	// Styling
-	style lipgloss.Style
+	style tui.Style
 }
 
 // New creates a new AppBar model with the given options.
-func New(opts ...Option) Model {
-	m := Model{
-		style: lipgloss.NewStyle(),
+func New(opts ...Option) *Model {
+	m := &Model{
+		style: tui.NewStyle(),
 	}
 
 	for _, opt := range opts {
-		opt(&m)
+		opt(m)
 	}
 
 	return m
 }
 
-// --- OPTIONS ---
+// --- Functional Options ---
 
 func WithLeading(component tui.Model) Option {
-	return func(m *Model) {
-		m.leading = component
-	}
+	return func(m *Model) { m.leading = component }
 }
 
 func WithTitle(component tui.Model) Option {
-	return func(m *Model) {
-		m.title = component
-	}
+	return func(m *Model) { m.title = component }
 }
 
 func WithActions(components ...tui.Model) Option {
-	return func(m *Model) {
-		m.actions = components
-	}
+	return func(m *Model) { m.actions = components }
 }
 
 func WithHeight(h int) Option {
-	return func(m *Model) {
-		m.height = h
-		m.style = m.style.Height(h)
-	}
+	return func(m *Model) { m.height = h }
 }
 
 func WithBackgroundColor(color string) Option {
-	return func(m *Model) {
-		m.style = m.style.Background(lipgloss.Color(color))
-	}
+	return func(m *Model) { m.BackgroundColor(color) }
 }
 
-func WithStyle(style lipgloss.Style) Option {
-	return func(m *Model) {
-		m.style = style
-	}
+func WithBorder(border tui.Border, sides ...bool) Option {
+	return func(m *Model) { m.Border(border, sides...) }
 }
 
-func (m Model) Init() tui.Cmd {
+func WithBorderForeground(color string) Option {
+	return func(m *Model) { m.BorderForeground(color) }
+}
+
+func WithPadding(p ...int) Option {
+	return func(m *Model) { m.Padding(p...) }
+}
+
+func WithWidth(width int) Option {
+	return func(m *Model) { m.Width(width) }
+}
+
+func WithAlign(pos tui.Position) Option {
+	return func(m *Model) { m.Align(pos) }
+}
+
+// --- tui.Model Implementation ---
+
+func (m *Model) Init() tui.Cmd {
 	// This is a placeholder. A real implementation would batch commands from children.
 	return nil
 }
 
-func (m Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
+func (m *Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
+	var cmds []tui.Cmd
+
 	switch msg := msg.(type) {
 	case tui.WindowSizeMsg:
 		m.width = msg.Width
 	}
 
-	// A real implementation would propagate updates to children and batch commands.
-	return m, nil
+	// Propagate updates to children
+	if m.leading != nil {
+		newModel, cmd := m.leading.Update(msg)
+		m.leading = newModel
+		cmds = append(cmds, cmd)
+	}
+	if m.title != nil {
+		newModel, cmd := m.title.Update(msg)
+		m.title = newModel
+		cmds = append(cmds, cmd)
+	}
+	for i, action := range m.actions {
+		newModel, cmd := action.Update(msg)
+		m.actions[i] = newModel
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tui.Batch(cmds...)
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	var leadingView, titleView string
 	var actionsView []string
 
 	leadingWidth := 0
 	if m.leading != nil {
 		leadingView = m.leading.View()
-		leadingWidth = lipgloss.Width(leadingView)
+		w, _ := m.style.GetLipglossStyle().GetFrameSize()
+		leadingWidth = w
 	}
 
 	if m.title != nil {
@@ -109,18 +132,19 @@ func (m Model) View() string {
 	actionsWidth := 0
 	for _, action := range m.actions {
 		view := action.View()
-		actionsWidth += lipgloss.Width(view)
+		w, _ := m.style.GetLipglossStyle().GetFrameSize()
+		actionsWidth += w
 		actionsView = append(actionsView, view)
 	}
-	actionsCombined := lipgloss.JoinHorizontal(lipgloss.Center, actionsView...)
+	actionsCombined := tui.JoinHorizontal(tui.Center, actionsView...)
 
 	hPadding, _ := m.style.GetFrameSize()
 	remainingWidth := m.width - leadingWidth - actionsWidth - hPadding
 
-	spacer := lipgloss.NewStyle().Width(remainingWidth).Render("")
+	spacer := tui.NewStyle().Width(remainingWidth).Render("")
 
-	content := lipgloss.JoinHorizontal(
-		lipgloss.Center,
+	content := tui.JoinHorizontal(
+		tui.Center,
 		leadingView,
 		titleView,
 		spacer,
@@ -128,4 +152,41 @@ func (m Model) View() string {
 	)
 
 	return m.style.Width(m.width).Render(content)
+}
+
+// --- layout.Layout Implementation ---
+
+func (m *Model) BackgroundColor(color string) tui.Layout {
+	m.style.Background(color)
+	return m
+}
+
+func (m *Model) Border(border tui.Border, sides ...bool) tui.Layout {
+	m.style.Border(border, sides...)
+	return m
+}
+
+func (m *Model) BorderForeground(color string) tui.Layout {
+	m.style.BorderForeground(color)
+	return m
+}
+
+func (m *Model) Padding(p ...int) tui.Layout {
+	m.style.Padding(p...)
+	return m
+}
+
+func (m *Model) Width(width int) tui.Layout {
+	m.style.Width(width)
+	return m
+}
+
+func (m *Model) Height(height int) tui.Layout {
+	m.style.Height(height)
+	return m
+}
+
+func (m *Model) Align(pos tui.Position) tui.Layout {
+	m.style.Align(pos)
+	return m
 }

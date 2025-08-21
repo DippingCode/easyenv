@@ -1,4 +1,3 @@
-//Package scaffold
 package scaffold
 
 import (
@@ -9,8 +8,11 @@ import (
 	"github.com/DippingCode/easyenv/pkg/core/ui/widgets/navbar"
 )
 
+// Ensure Model implements the tui.Model and tui.Layout interfaces.
 var _ tui.Model = (*Model)(nil)
+var _ tui.Layout = (*Model)(nil)
 
+// Option is a functional option for configuring the Scaffold.
 type Option func(*Model)
 
 type Model struct {
@@ -32,8 +34,9 @@ type Model struct {
 	bottomBarHeight   int
 }
 
-func New(opts ...Option) Model {
-	m := Model{
+// New creates a new Scaffold model with the given options.
+func New(opts ...Option) *Model {
+	m := &Model{
 		marginStyle:       tui.NewStyle(),
 		containerStyle:    tui.NewStyle(),
 		appBarStyle:       tui.NewStyle(),
@@ -43,31 +46,29 @@ func New(opts ...Option) Model {
 	}
 
 	for _, opt := range opts {
-		opt(&m)
+		opt(m)
 	}
 
 	return m
 }
 
-// --- COMPONENT OPTIONS ---
+// --- Functional Options ---
 
-func WithAppBar(appBar appbar.Model) Option {
-	return func(m *Model) { m.AppBar = &appBar }
+func WithAppBar(appBar *appbar.Model) Option {
+	return func(m *Model) { m.AppBar = appBar }
 }
 
-func WithNavBar(navBar navbar.Model) Option {
-	return func(m *Model) { m.NavBar = &navBar }
+func WithNavBar(navBar *navbar.Model) Option {
+	return func(m *Model) { m.NavBar = navBar }
 }
 
-func WithBottomBar(bottomBar bottombar.Model) Option {
-	return func(m *Model) { m.BottomBar = &bottomBar }
+func WithBottomBar(bottomBar *bottombar.Model) Option {
+	return func(m *Model) { m.BottomBar = bottomBar }
 }
 
-func WithContainerBox(containerbox containerbox.Model) Option {
-	return func(m *Model) { m.ContainerBox = &containerbox }
+func WithContainerBox(containerbox *containerbox.Model) Option {
+	return func(m *Model) { m.ContainerBox = containerbox }
 }
-
-// --- STYLING & SIZING OPTIONS ---
 
 func WithMargin(m ...int) Option {
 	return func(model *Model) { model.marginStyle.Margin(m...) }
@@ -111,7 +112,7 @@ func WithBottomBarHeight(h int) Option {
 
 // --- TUI MODEL IMPLEMENTATION ---
 
-func (m Model) Init() tui.Cmd {
+func (m *Model) Init() tui.Cmd {
 	// Delegate Init to children
 	var cmds []tui.Cmd
 	if m.AppBar != nil {
@@ -129,7 +130,7 @@ func (m Model) Init() tui.Cmd {
 	return tui.Batch(cmds...)
 }
 
-func (m Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
+func (m *Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 	var cmds []tui.Cmd
 
 	switch msg := msg.(type) {
@@ -143,29 +144,33 @@ func (m Model) Update(msg tui.Msg) (tui.Model, tui.Cmd) {
 	// Delegate updates to children
 	if m.AppBar != nil {
 		newAppBar, cmd := m.AppBar.Update(msg)
-		*m.AppBar = newAppBar.(appbar.Model)
+		newAppBarModel := newAppBar.(*appbar.Model)
+		*m.AppBar = *newAppBarModel
 		cmds = append(cmds, cmd)
 	}
 	if m.NavBar != nil {
 		newNavBar, cmd := m.NavBar.Update(msg)
-		*m.NavBar = newNavBar.(navbar.Model)
+		newNavBarModel := newNavBar.(*navbar.Model)
+		*m.NavBar = *newNavBarModel
 		cmds = append(cmds, cmd)
 	}
 	if m.BottomBar != nil {
 		newBottomBar, cmd := m.BottomBar.Update(msg)
-		*m.BottomBar = newBottomBar.(bottombar.Model)
+		newBottomBarModel := newBottomBar.(*bottombar.Model)
+		*m.BottomBar = *newBottomBarModel
 		cmds = append(cmds, cmd)
 	}
 	if m.ContainerBox != nil {
 		newContainerBox, cmd := m.ContainerBox.Update(msg)
-		*m.ContainerBox = newContainerBox.(containerbox.Model)
+		newContainerBoxModel := newContainerBox.(*containerbox.Model)
+		*m.ContainerBox = *newContainerBoxModel
 		cmds = append(cmds, cmd)
 	}
 
 	return m, tui.Batch(cmds...)
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	if m.width <= 0 || m.height <= 0 {
 		return "Initializing scaffold..."
 	}
@@ -226,4 +231,41 @@ func (m Model) View() string {
 	container := m.containerStyle.Width(m.width).Height(m.height).Render(finalView)
 
 	return m.marginStyle.Render(container)
+}
+
+// --- layout.Layout Implementation ---
+
+func (m *Model) BackgroundColor(color string) tui.Layout {
+	m.containerStyle.Background(color)
+	return m
+}
+
+func (m *Model) Border(border tui.Border, sides ...bool) tui.Layout {
+	m.containerStyle.Border(border, sides...)
+	return m
+}
+
+func (m *Model) BorderForeground(color string) tui.Layout {
+	m.containerStyle.BorderForeground(color)
+	return m
+}
+
+func (m *Model) Padding(p ...int) tui.Layout {
+	m.containerStyle.Padding(p...)
+	return m
+}
+
+func (m *Model) Width(width int) tui.Layout {
+	m.containerStyle.Width(width)
+	return m
+}
+
+func (m *Model) Height(height int) tui.Layout {
+	m.containerStyle.Height(height)
+	return m
+}
+
+func (m *Model) Align(pos tui.Position) tui.Layout {
+	m.containerStyle.Align(pos)
+	return m
 }
